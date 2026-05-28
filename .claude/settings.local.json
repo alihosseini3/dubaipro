@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd d:\\\\dubaipro.code; npx tsc --noEmit 2>&1; echo \"EXIT:$LASTEXITCODE\")"
+    ]
+  }
+}

@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Used by the mega menu — wider, taller drop animation than `fadeIn`. */
+@keyframes fadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Cart / wishlist badge pop on count change. The component re-keys on
+   the count value, so this fires every time it changes. */
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-pop {
+  animation: pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Mobile drawer slide. RTL-friendly: the panel uses `start-0` so the
+   visual edge it slides from already flips for ar/fa/ur. We translate
+   along the inline axis using a CSS variable for direction. */
+[dir='ltr'] {
+  --slide-from: -100%;
+}
+[dir='rtl'] {
+  --slide-from: 100%;
+}
+@keyframes slideInStart {
+  from {
+    transform: translateX(var(--slide-from, -100%));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Hide scrollbar while keeping the element scrollable. Used on the
+   horizontal mobile category strip and bottom-nav row. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* iOS safe-area helpers. Mobile bottom nav uses these so it doesn't
+   collide with the home indicator on devices with rounded corners. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Reserved space at the bottom of `<main>` on mobile so fixed bottom
+   nav never overlaps the last row of content. Falls back to 0 when
+   no env var is available. */
+@media (max-width: 767px) {
+  [data-bottom-nav='1'] {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}

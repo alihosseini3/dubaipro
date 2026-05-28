@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+build
+coverage
+.cache
+logs
+tmp
+*.log
+.env.local
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.vercel
+out
+public/uploads
+public/temp

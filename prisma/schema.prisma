@@ -1,0 +1,2216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  SELLER
+  SUPPLIER
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum RfqStatus {
+  OPEN
+  REVIEWING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  CLOSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  MANUAL_REVIEW
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+/// Trust tier of a supplier. Public storefront badges and ranking rules
+/// read this. STANDARD = baseline; VERIFIED = documents reviewed by an
+/// admin; GUARANTEED = top tier (escrow / SLA / bond — admin-curated).
+enum SupplierTier {
+  STANDARD
+  VERIFIED
+  GUARANTEED
+}
+
+/// Lifecycle of a supplier account. Only `ACTIVE` is publicly listable.
+/// `PENDING_REVIEW` is the default for self-registered suppliers until
+/// an admin approves them. `SUSPENDED` temporarily hides the storefront;
+/// `BLACKLISTED` is a hard block that also prevents future re-activation
+/// without admin override.
+enum SupplierStatus {
+  PENDING_REVIEW
+  ACTIVE
+  SUSPENDED
+  BLACKLISTED
+}
+
+/// State of a single uploaded certification document.
+enum CertificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+/// High-level supplier business model. Used for storefront filters and
+/// the "About" tab. OTHER is a fallback for edge cases.
+enum BusinessType {
+  MANUFACTURER
+  TRADING_COMPANY
+  DISTRIBUTOR
+  WHOLESALER
+  AGENT
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         UserRole @default(CUSTOMER)
+  /// Public-facing affiliate code. Lazily generated on first /account/referral
+  /// visit (or on demand). Indexed unique so we can resolve by `?ref=`.
+  referralCode String?  @unique
+  createdAt    DateTime @default(now())
+
+  supplier               Supplier?
+  orders                 Order[]
+  rfqs                   RFQ[]
+  cart                   Cart?
+  addresses              Address[]
+  wishlist               Wishlist?
+  reviews                Review[]
+  customerConversations  Conversation[]       @relation("CustomerConversations")
+  sellerConversations    Conversation[]       @relation("SellerConversations")
+  messages               Message[]
+  passwordResetTokens    PasswordResetToken[]
+  repliedContactMessages ContactMessage[]
+  targetedCoupons        Coupon[]             @relation("UserCoupons")
+  couponUsages           CouponUsage[]
+  referralsMade          Referral[]           @relation("Referrer")
+  referralReceived       Referral?            @relation("Referred")
+  commissionsEarned      Commission[]
+  metrics                UserMetrics?
+  auctionBids            AuctionBid[]
+  auctionWins            Auction[]            @relation("AuctionWinner")
+  auctionWatches         AuctionWatch[]
+  uploadedMedia          MediaAsset[]
+  rfqRequests            RfqRequest[]
+  rfqMessages            RfqMessage[]
+  /// Suppliers this user follows (one row per follow). Cascade-deleted
+  /// with the user. The reverse counter lives on `Supplier.followerCount`.
+  followedSuppliers      SupplierFollower[]
+  /// Reviews this user wrote about suppliers (max 1 per supplier).
+  supplierReviewsWritten SupplierReview[]
+  /// Timestamp the user accepted the marketing consent banner. Null
+  /// means "unknown / not asked". Server-side tracking checks this to
+  /// honour GDPR even outside the browser cookie context.
+  consentAt              DateTime?
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  couponId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  CartItem[]
+  coupon Coupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+/// B2B supplier profile. One-to-one with `User` (a user becomes a supplier
+/// when this row is created and their role is set to `SUPPLIER`). All
+/// fields below the legacy block are optional / default-safe so existing
+/// rows survive the migration unchanged.
+///
+/// Counters (`followerCount`, `ratingAvg`, `ratingCount`, `profileViews`)
+/// are denormalised. The service layer (`lib/suppliers/*`) is the single
+/// writer — never increment these from API routes directly.
+model Supplier {
+  // ─── Legacy columns (kept verbatim for backward-compat) ───────────────
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
+  country   String
+  phone     String?
+  /// Legacy boolean kept for back-compat with admin UI + filters. The
+  /// new source of truth is `tier` (VERIFIED/GUARANTEED implies verified).
+  /// Services keep both in sync on writes.
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // ─── Storefront identity ──────────────────────────────────────────────
+  /// URL slug for `/{locale}/suppliers/<slug>`. Nullable so legacy rows
+  /// survive the migration; backfilled by `scripts/backfill-supplier-data.mjs`.
+  /// Unique nulls are allowed by Postgres so concurrent legacy rows do not collide.
+  slug             String?       @unique
+  logoUrl          String?       @db.VarChar(2048)
+  bannerUrl        String?       @db.VarChar(2048)
+  shortTagline     String?       @db.VarChar(160)
+  description      String?       @db.Text
+  businessType     BusinessType?
+  yearEstablished  Int?
+  warehouseAddress String?       @db.Text
+  city             String?
+  /// ISO 3166-1 alpha-2 codes (e.g. ["AE","SA","IR"]) of markets served.
+  exportMarkets    String[]      @default([])
+  /// Default minimum order quantity. Per-product MOQ wins when set.
+  minOrderQuantity Int?
+  shippingNotes    String?       @db.Text
+
+  // ─── Trust & lifecycle ────────────────────────────────────────────────
+  tier                  SupplierTier   @default(STANDARD)
+  status                SupplierStatus @default(PENDING_REVIEW)
+  /// Admin-curated featured flag — surfaced on home Top Suppliers band.
+  isFeatured            Boolean        @default(false)
+  /// When the current verification (tier) was granted.
+  verifiedAt            DateTime?
+  /// User id (admin) who granted the current verification. No FK — admins
+  /// rarely deleted; if removed, the audit string survives.
+  verifiedById          String?
+  /// Optional expiry for the verification — admin sets when documents
+  /// have an expiry date (ISO cert, license, etc.).
+  verificationExpiresAt DateTime?
+
+  // ─── SEO ──────────────────────────────────────────────────────────────
+  metaTitle       String? @db.VarChar(70)
+  metaDescription String? @db.VarChar(200)
+
+  // ─── Denormalised counters (writers: lib/suppliers/*) ────────────────
+  followerCount Int   @default(0)
+  /// Mean of `SupplierReview.rating`. 0 when no reviews. Always paired
+  /// with `ratingCount` to display "★4.6 (128 reviews)".
+  ratingAvg     Float @default(0)
+  ratingCount   Int   @default(0)
+  /// Lightweight visit counter for the public storefront page.
+  profileViews  Int   @default(0)
+
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products         Product[]
+  rfqs             RFQ[]
+  rfqQuotes        RfqQuote[]
+  rfqInvites       RfqSupplierInvite[]
+  auctions         Auction[]
+  certifications   SupplierCertification[]
+  followers        SupplierFollower[]
+  supplierReviews  SupplierReview[]
+  verificationLogs SupplierVerificationLog[]
+
+  @@index([country])
+  @@index([verified])
+  @@index([status])
+  @@index([tier, status])
+  @@index([isFeatured, status])
+  @@index([slug])
+}
+
+/// One uploaded certification / credential document. The file lives in
+/// `MediaAsset`; only the URL + admin-review metadata is mirrored here.
+/// Multiple certs per supplier are expected (ISO 9001, CE, FDA, business
+/// license, custom). Admins review them via the verification workflow.
+model SupplierCertification {
+  id           String              @id @default(cuid())
+  supplierId   String
+  /// Free-form type string (e.g. "ISO_9001", "CE", "FDA", "BUSINESS_LICENSE",
+  /// "CUSTOM"). Kept as VarChar instead of an enum to allow custom labels
+  /// without a schema migration for every new credential.
+  type         String              @db.VarChar(64)
+  title        String              @db.VarChar(200)
+  issuer       String?             @db.VarChar(200)
+  /// Public URL to the certification file (image/PDF). Source: MediaAsset.url.
+  fileUrl      String              @db.VarChar(2048)
+  /// Optional thumbnail (smaller variant from the media pipeline).
+  thumbUrl     String?             @db.VarChar(2048)
+  issuedAt     DateTime?
+  expiresAt    DateTime?
+  status       CertificationStatus @default(PENDING)
+  /// Admin id (no FK, see Supplier.verifiedById rationale).
+  reviewerId   String?
+  reviewerNote String?             @db.Text
+  /// Display order in the supplier "Certifications" tab.
+  order        Int                 @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId, status])
+  @@index([supplierId, order])
+  @@index([type])
+}
+
+/// A user following a supplier. Composite unique enforces 1 follow per
+/// (supplier, user). The reverse cardinality denormalised on
+/// `Supplier.followerCount` is maintained by `lib/suppliers/follow.ts`.
+model SupplierFollower {
+  id         String   @id @default(cuid())
+  supplierId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, userId])
+  @@index([userId, createdAt])
+  @@index([supplierId, createdAt])
+}
+
+/// A review written by a user about a supplier (distinct from the
+/// existing `Review` model which targets a Product). 1 review per
+/// (supplier, user) to prevent ballot stuffing. The `orderId` field
+/// is an optional pointer used to mark "verified purchase" reviews
+/// without adding a relation on Order (kept as String to minimise
+/// cross-model coupling — validated in the service layer).
+model SupplierReview {
+  id                   String    @id @default(cuid())
+  supplierId           String
+  userId               String
+  /// Optional `Order.id` snapshot. When non-null and the order is
+  /// found to belong to this user AND contain items from this supplier,
+  /// `isVerifiedPurchase=true` is set by the service.
+  orderId              String?
+  /// Star rating 1..5. The service enforces the range on write.
+  rating               Int
+  title                String?   @db.VarChar(200)
+  comment              String    @db.Text
+  isVerifiedPurchase   Boolean   @default(false)
+  /// Supplier's public reply. Only the supplier who owns the profile may write.
+  supplierReplyContent String?   @db.Text
+  supplierReplyAt      DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, userId])
+  @@index([supplierId, createdAt])
+  @@index([rating])
+}
+
+/// Append-only audit log of every verification / status transition.
+/// Powers the admin "verification history" timeline. Actor is stored as
+/// a plain string (no FK) so admin deletions never break the log.
+model SupplierVerificationLog {
+  id         String          @id @default(cuid())
+  supplierId String
+  fromTier   SupplierTier?
+  toTier     SupplierTier?
+  fromStatus SupplierStatus?
+  toStatus   SupplierStatus?
+  /// Short action code. Standard set:
+  ///   SUBMIT_DOCS / APPROVE_TIER / REJECT / SUSPEND / RESTORE /
+  ///   BLACKLIST / FEATURE / UNFEATURE / EXPIRE / NOTE.
+  action     String          @db.VarChar(64)
+  note       String?         @db.Text
+  /// Admin user id (no FK; survives admin deletion as historical record).
+  actorId    String?
+  createdAt  DateTime        @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId, createdAt])
+  @@index([action])
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  parentId        String?
+  icon            String?  @db.VarChar(64)
+  imageUrl        String?
+  description     String?  @db.VarChar(500)
+  metaTitle       String?  @db.VarChar(70)
+  metaDescription String?  @db.VarChar(200)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryChildren")
+
+  products           Product[]
+  auctions           Auction[]
+  coupons            Coupon[]
+  megaMenuItems      MegaMenuItem[]
+  categoryAttributes CategoryAttribute[]
+  filterConfig       CategoryFilterConfig?
+  rfqRequests        RfqRequest[]
+
+  @@index([name])
+  @@index([parentId])
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  products Product[]
+
+  @@index([name])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  supplierId      String
+  categoryId      String
+  brandId         String?
+  title           String
+  slug            String   @unique
+  description     String   @db.Text
+  price           Decimal  @db.Decimal(12, 2)
+  compareAtPrice  Decimal? @db.Decimal(12, 2)
+  currency        String   @default("USD") @db.VarChar(3)
+  stock           Int      @default(0)
+  isB2B           Boolean  @default(false)
+  imageUrl        String?
+  images          Json?
+  // Shipping metadata (all nullable → falls back to global defaults).
+  weight          Float? // kg
+  length          Float? // cm
+  width           Float? // cm
+  height          Float? // cm
+  shippingClass   String?  @default("normal") @db.VarChar(32)
+  // --- SEO overrides (admin-controlled). Fall back to title/description when null. ---
+  metaTitle       String?  @db.VarChar(70)
+  metaDescription String?  @db.VarChar(200)
+  createdAt       DateTime @default(now())
+
+  supplier        Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  category        Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  brand           Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  orderItems      OrderItem[]
+  rfqs            RFQ[]
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
+  reviews         Review[]
+  coupons         Coupon[]
+  attributeValues ProductAttributeValue[]
+
+  @@index([supplierId])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([slug])
+  @@index([isB2B])
+  @@index([createdAt])
+  @@index([price])
+  /// Powers the storefront search ("title contains") + autocomplete.
+  /// Postgres uses this btree index for prefix queries and pg_trgm for
+  /// substring matches if the extension is enabled later.
+  @@index([title])
+}
+
+model Order {
+  id                String         @id @default(cuid())
+  userId            String
+  totalPrice        Decimal        @db.Decimal(12, 2)
+  shippingPrice     Decimal        @default(0) @db.Decimal(12, 2)
+  shippingBreakdown Json?
+  discountAmount    Decimal        @default(0) @db.Decimal(12, 2)
+  couponId          String?
+  couponCode        String?
+  addressId         String?
+  shippingMethodId  String?
+  status            OrderStatus    @default(PENDING)
+  paymentStatus     PaymentStatus? @default(PENDING)
+  paymentMethod     String?        @db.VarChar(32)
+  paidAt            DateTime?
+  trackingCode      String?        @db.VarChar(64)
+  carrier           String?        @db.VarChar(64)
+  whatsappClickId   String?        @db.VarChar(64)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  address        Address?        @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  shippingMethod ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  coupon         Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
+  payments       Payment[]
+  couponUsage    CouponUsage?
+  commission     Commission?
+
+  @@index([userId])
+  @@index([status])
+  @@index([whatsappClickId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([addressId])
+  @@index([shippingMethodId])
+  @@index([couponId])
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  fullName    String
+  phone       String
+  country     String
+  city        String
+  addressLine String   @db.Text
+  postalCode  String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+enum CouponAppliesTo {
+  ALL
+  CATEGORY
+  PRODUCT
+  USER
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  description    String?    @db.Text
+  type           CouponType
+  value          Decimal    @db.Decimal(12, 2)
+  minOrderAmount Decimal?   @db.Decimal(12, 2)
+  maxDiscount    Decimal?   @db.Decimal(12, 2)
+  usageLimit     Int?
+  usedCount      Int        @default(0)
+  expiresAt      DateTime?
+  isActive       Boolean    @default(true)
+
+  // --- Marketing engine ---
+  appliesTo      CouponAppliesTo @default(ALL)
+  categoryId     String?
+  productId      String?
+  userId         String?
+  firstOrderOnly Boolean         @default(false)
+  perUserLimit   Int?
+  startAt        DateTime?
+  autoApply      Boolean         @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  user     User?     @relation("UserCoupons", fields: [userId], references: [id], onDelete: SetNull)
+
+  carts  Cart[]
+  orders Order[]
+  usages CouponUsage[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@index([startAt])
+  @@index([autoApply, isActive])
+  @@index([categoryId])
+  @@index([productId])
+  @@index([userId])
+}
+
+// One row per redemption. `orderId` is unique → guarantees a coupon
+// is counted at most once per order even if order-create logic is
+// retried. Used for: per-user limit checks, usage history, and
+// revenue-impact analytics (sum Order.discountAmount where couponId).
+model CouponUsage {
+  id       String   @id @default(cuid())
+  couponId String
+  userId   String
+  orderId  String   @unique
+  usedAt   DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([couponId, userId])
+}
+
+model ShippingZone {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(80)
+  // ISO 3166-1 alpha-2 country codes (e.g. ["AE","IR"]). "*" = catch-all.
+  countries String[] @db.VarChar(8)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  methods ShippingMethod[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model ShippingMethod {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?  @db.Text
+  // Flat fallback price (used when basePrice/pricePerKg are null).
+  price            Decimal  @db.Decimal(12, 2)
+  estimatedDays    Int
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  zoneId           String?
+  // --- Rule engine (all nullable → backward compatible) -----------------
+  minWeight        Float?
+  maxWeight        Float?
+  basePrice        Decimal? @db.Decimal(12, 2)
+  pricePerKg       Decimal? @db.Decimal(12, 2)
+  volumetricFactor Float?
+  shippingClass    String?  @db.VarChar(32)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  orders Order[]
+  zone   ShippingZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([zoneId])
+}
+
+// Singleton (id = "default"). Holds engine-wide defaults so admins can
+// tune the calculator without code changes.
+model ShippingSettings {
+  id                      String   @id @default("default")
+  defaultVolumetricFactor Float    @default(5000)
+  enableVolumetric        Boolean  @default(false)
+  roundingStrategy        String   @default("ceil") @db.VarChar(16) // ceil | round
+  updatedAt               DateTime @updatedAt
+}
+
+// Singleton (id = "default"). Stores admin-managed gateway toggles,
+// credentials and manual-transfer bank info. Read by lib/payments.
+model PaymentSettings {
+  id String @id @default("default")
+
+  enableMellat       Boolean @default(false)
+  enableZarinpal     Boolean @default(false)
+  enableCardTransfer Boolean @default(false)
+  enableBankTransfer Boolean @default(false)
+  enableStripe       Boolean @default(false)
+  enableTap          Boolean @default(false)
+  enablePaypal       Boolean @default(false)
+
+  // Iran gateways
+  mellatTerminalId   String? @db.VarChar(64)
+  mellatUsername     String? @db.VarChar(128)
+  mellatPassword     String? @db.VarChar(256)
+  zarinpalMerchantId String? @db.VarChar(128)
+
+  // International gateways
+  stripePublicKey     String? @db.VarChar(256)
+  stripeSecretKey     String? @db.VarChar(256)
+  stripeWebhookSecret String? @db.VarChar(256)
+  tapSecretKey        String? @db.VarChar(256)
+  paypalClientId      String? @db.VarChar(256)
+  paypalClientSecret  String? @db.VarChar(256)
+
+  // Manual payment info (shown to customers for CARD_TRANSFER / BANK_TRANSFER)
+  cardNumber    String? @db.VarChar(64)
+  iban          String? @db.VarChar(64)
+  accountHolder String? @db.VarChar(128)
+  bankName      String? @db.VarChar(128)
+  manualNotes   String? @db.VarChar(512)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String        @db.VarChar(3)
+  status          PaymentStatus @default(PENDING)
+  provider        String        @db.VarChar(32)
+  // Method code from the catalog (e.g. MELLAT, CARD_TRANSFER). May equal
+  // `provider` for single-method gateways. Kept as String to avoid an
+  // enum migration whenever a new gateway is added.
+  method          String?       @db.VarChar(32)
+  providerId      String?       @unique
+  // Customer-supplied tracking number for manual transfers.
+  referenceNumber String?       @db.VarChar(128)
+  // URL to uploaded receipt (for manual review).
+  receiptImage    String?
+  metadata        Json?
+  errorMessage    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([provider])
+  @@index([method])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(12, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([productId])
+}
+
+model RFQ {
+  id         String    @id @default(cuid())
+  userId     String?
+  productId  String
+  supplierId String
+  quantity   Int
+  message    String    @db.Text
+  status     RfqStatus @default(OPEN)
+  createdAt  DateTime  @default(now())
+
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([productId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Directed FX rate override: `1 base = rate * target`.
+///
+/// Today every row has `base = "AED"` (the fixed storefront base), but the
+/// directed pair shape keeps the door open for:
+///   - switching the base currency without a schema migration;
+///   - storing cross-pairs (e.g. USD→EUR) fetched from a live API.
+///
+/// Missing pairs fall back to the static defaults in `lib/currency/rates.ts`.
+/// Orders and payments are ALWAYS persisted in AED — this table only
+/// affects the display/formatting layer.
+model CurrencyRate {
+  id        String   @id @default(cuid())
+  base      String   @default("AED")
+  target    String
+  rate      Decimal  @db.Decimal(18, 8)
+  updatedAt DateTime @updatedAt
+
+  history CurrencyRateHistory[]
+
+  @@unique([base, target])
+  @@index([target])
+}
+
+/// Immutable audit trail of every rate change (manual edits today, live-API
+/// imports tomorrow). Consumers can read the latest row per pair to show a
+/// sparkline, or aggregate by day for charting.
+model CurrencyRateHistory {
+  id        String   @id @default(cuid())
+  rateId    String
+  base      String
+  target    String
+  rate      Decimal  @db.Decimal(18, 8)
+  /// "manual" | "api" | "seed" — free-form for now, convert to enum later.
+  source    String   @default("manual")
+  /// Optional admin user id who performed the change.
+  changedBy String?
+  createdAt DateTime @default(now())
+
+  currencyRate CurrencyRate @relation(fields: [rateId], references: [id], onDelete: Cascade)
+
+  @@index([rateId])
+  @@index([base, target, createdAt])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WishlistItem[]
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  productId  String
+  createdAt  DateTime @default(now())
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId])
+  @@index([productId])
+  @@index([wishlistId, createdAt])
+}
+
+model Conversation {
+  id         String   @id @default(cuid())
+  customerId String
+  sellerId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer       User             @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade)
+  seller         User             @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages       Message[]
+  contactMessage ContactMessage[]
+
+  @@unique([customerId, sellerId])
+  @@index([customerId, updatedAt])
+  @@index([sellerId, updatedAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String   @db.Text
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model WhatsAppClick {
+  id          String    @id @default(cuid())
+  productId   String?
+  supplierId  String?
+  source      String    @default("unknown")
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  @@index([createdAt])
+  @@index([productId])
+  @@index([supplierId])
+  @@index([utmCampaign])
+  @@index([utmSource])
+  @@index([expiresAt])
+}
+
+model WhatsAppSettings {
+  id                 String   @id @default("singleton")
+  phone              String   @default("")
+  defaultMessage     String   @default("") @db.Text
+  isEnabled          Boolean  @default(false)
+  showFloating       Boolean  @default(true)
+  showOnProduct      Boolean  @default(true)
+  enableInternalChat Boolean  @default(true)
+  enableContactForm  Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+enum ContactMessageStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+model ContactMessage {
+  id        String               @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String               @db.Text
+  userId    String?
+  locale    String?
+  userAgent String?              @db.Text
+  status    ContactMessageStatus @default(NEW)
+  createdAt DateTime             @default(now())
+
+  // Reply fields
+  replyContent   String?   @db.Text
+  replySentAt    DateTime?
+  repliedById    String?
+  conversationId String?
+
+  // Relations
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+  repliedBy    User?         @relation(fields: [repliedById], references: [id])
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([email])
+  @@index([conversationId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  rating    Int
+  comment   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId, createdAt])
+  @@index([userId])
+  @@index([rating])
+}
+
+enum AutomationEventType {
+  USER_REGISTERED
+  CART_ABANDONED
+  ORDER_CREATED
+  PAYMENT_SUCCESS
+  RFQ_CREATED
+  /// Sent right after a user's FIRST paid order — typically an upsell.
+  FIRST_PURCHASE_UPSELL
+  /// Sent ~7 days after any paid order — replenishment / review prompt.
+  POST_PURCHASE_REMINDER
+  /// Sent when a previously active customer goes 30+ days without ordering.
+  INACTIVE_COMEBACK
+  /// Invite registered users to the affiliate / referral programme.
+  AFFILIATE_INVITE
+  /// Follow-up survey or review request a set time after delivery.
+  ORDER_FOLLOWUP
+  /// Targeted discount or coupon offer.
+  DISCOUNT_OFFER
+  /// Enterprise RFQ ecosystem events (RfqRequest model).
+  RFQ_REQUEST_CREATED
+  RFQ_QUOTE_RECEIVED
+  RFQ_QUOTE_ACCEPTED
+  RFQ_EXPIRING
+  RFQ_SUPPLIER_INVITED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum AutomationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum AutomationStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// One row per (event, channel, locale). `subject` is null for WhatsApp.
+/// Body supports `{name} {product} {price} {link}` placeholders.
+model AutomationRule {
+  id        String              @id @default(cuid())
+  eventType AutomationEventType
+  channel   AutomationChannel
+  locale    String              @db.VarChar(8)
+  /// `ALL` is the default fallback applied to every segment. Specific
+  /// segments override `ALL` when present, enabling per-segment copy
+  /// (VIP language for HIGH_VALUE, comeback offers for INACTIVE, …).
+  segment   CustomerSegment     @default(ALL)
+  enabled   Boolean             @default(true)
+  subject   String?
+  body      String              @db.Text
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([eventType, channel, locale, segment])
+  @@index([eventType])
+}
+
+/// Append-only audit + dedup table. `dedupeKey` (e.g. "ORDER_CREATED:cuid")
+/// makes (key, channel, eventType) unique so retries never double-send.
+/// Status SKIPPED is logged when rule disabled or rate-limited.
+model AutomationLog {
+  id        String              @id @default(cuid())
+  userId    String?
+  eventType AutomationEventType
+  channel   AutomationChannel
+  status    AutomationStatus
+  recipient String?             @db.VarChar(255)
+  dedupeKey String?             @db.VarChar(255)
+  error     String?             @db.Text
+  payload   Json?
+  createdAt DateTime            @default(now())
+
+  @@unique([dedupeKey, channel, eventType])
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+/// Persistent link between a referrer and a referred user. Created at
+/// signup time when a `?ref=CODE` cookie was present. `referredUserId`
+/// is unique so a user can only be attributed to one referrer ever —
+/// the first one wins, preventing late attribution attacks.
+/// `code` is a snapshot of the referrer's code AT THE TIME of signup
+/// so future code rotations don't break historical attribution.
+model Referral {
+  id             String   @id @default(cuid())
+  referrerUserId String
+  referredUserId String   @unique
+  code           String
+  createdAt      DateTime @default(now())
+
+  referrer User @relation("Referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("Referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId, createdAt])
+  @@index([code])
+}
+
+/// One commission row per (referrer, order). Unique on `orderId` ensures
+/// idempotent creation from payment webhooks. `amount` is stored in the
+/// order's currency to avoid lossy conversions; payouts settle in AED.
+model Commission {
+  id             String           @id @default(cuid())
+  referrerUserId String
+  orderId        String           @unique
+  amount         Decimal          @db.Decimal(12, 2)
+  currency       String           @db.VarChar(3)
+  status         CommissionStatus @default(PENDING)
+  createdAt      DateTime         @default(now())
+  approvedAt     DateTime?
+  paidAt         DateTime?
+  /// Free-form admin note (transfer reference, rejection reason, etc.).
+  note           String?          @db.Text
+
+  referrer User  @relation(fields: [referrerUserId], references: [id], onDelete: Cascade)
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId, status])
+  @@index([status, createdAt])
+}
+
+/// Singleton (id = "default") holding all retargeting pixel IDs and
+/// privacy toggles. Stored in DB instead of env so admins can rotate
+/// pixels without a deploy.
+///
+/// `requireConsent`: when true, no pixel fires until the visitor opts
+/// in via the consent banner — needed for GDPR-style jurisdictions.
+/// When false (e.g. UAE-only deployments) tracking starts on page load.
+model MarketingSettings {
+  id                String   @id @default("default")
+  trackingEnabled   Boolean  @default(false)
+  /// Google Ads / GA4 measurement ID, e.g. `AW-1234567890` or `G-XXXX`.
+  googleAdsId       String?
+  /// Optional Google Ads conversion label for purchases (the part after `/`).
+  googleConvLabel   String?
+  /// Meta Pixel numeric id.
+  metaPixelId       String?
+  /// Meta Conversions API access token (sensitive). Used for the
+  /// server-side `/{pixelId}/events` POST that complements client fbq.
+  metaAccessToken   String?  @db.Text
+  /// Optional `test_event_code` from Events Manager → Test Events.
+  metaTestEventCode String?  @db.VarChar(32)
+  /// GA4 measurement ID for the Measurement Protocol (server
+  /// purchase events). Distinct from `googleAdsId` because GA4 and
+  /// Google Ads can be linked yet have different IDs.
+  ga4MeasurementId  String?  @db.VarChar(32)
+  /// GA4 Measurement Protocol api_secret (sensitive).
+  ga4ApiSecret      String?  @db.Text
+  requireConsent    Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+enum ExperimentEventType {
+  IMPRESSION
+  CLICK
+  CONVERSION
+}
+
+/// A/B test container. `key` is the developer-facing handle the codebase
+/// references (e.g. "checkout_cta") — stable even if `name` is renamed
+/// in the admin UI. `isActive=false` makes `getActiveVariant` short-circuit
+/// to null so callers fall back to their default rendering.
+model Experiment {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(64)
+  name        String
+  description String?  @db.Text
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants ExperimentVariant[]
+  events   ExperimentEvent[]
+
+  @@index([isActive])
+}
+
+/// One arm of an experiment. `weight` is a non-negative integer; the
+/// assigner picks proportionally so 1/1 = 50/50, 1/3 = 25/75, etc.
+/// `config` is intentionally untyped JSON so each experiment can ship
+/// its own shape (button label, hex color, layout flag, …).
+model ExperimentVariant {
+  id           String   @id @default(cuid())
+  experimentId String
+  key          String   @db.VarChar(32)
+  name         String
+  weight       Int      @default(1)
+  config       Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  experiment Experiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  events     ExperimentEvent[]
+
+  @@unique([experimentId, key])
+}
+
+/// Append-only event log. We do NOT dedupe IMPRESSIONs at the DB level
+/// (would require a write-time unique check that hurts hot paths) —
+/// instead the client sends one impression per (visitor, experiment)
+/// session via a sessionStorage flag. Aggregations group by visitorId.
+model ExperimentEvent {
+  id           String              @id @default(cuid())
+  experimentId String
+  variantId    String
+  type         ExperimentEventType
+  visitorId    String              @db.VarChar(64)
+  userId       String?
+  /// Revenue contribution for CONVERSION events; 0 for clicks/impressions.
+  value        Decimal             @default(0) @db.Decimal(12, 2)
+  createdAt    DateTime            @default(now())
+
+  experiment Experiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant    ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId, type, createdAt])
+  @@index([variantId, type])
+  @@index([visitorId])
+}
+
+enum CustomerSegment {
+  /// Sentinel meaning "applies to every segment". Used as the default
+  /// `AutomationRule.segment` so the composite unique key is well-
+  /// defined (Postgres treats NULLs as not-equal in unique indexes).
+  ALL
+  /// Has zero orders OR exactly one paid order in the last 30 days.
+  NEW
+  /// 2+ paid orders, last order within 90 days, below the high-value bar.
+  REPEAT
+  /// Crossed the lifetime-spend threshold OR placed many orders.
+  HIGH_VALUE
+  /// At least one order, but >60 days since the last paid order.
+  INACTIVE
+}
+
+/// Denormalized per-user aggregates updated on every PAID transition.
+/// Living off this table lets `/admin/customers` filter by segment
+/// without scanning the entire orders table on each request, and lets
+/// the lifecycle cron find candidates with an index-friendly query.
+///
+/// `lifetimeValue` is currently equal to `totalSpent` (historical, not
+/// predictive). When/if we ship a predictive model the model output
+/// goes here without changing any callers.
+model UserMetrics {
+  userId        String          @id
+  totalSpent    Decimal         @default(0) @db.Decimal(14, 2)
+  lifetimeValue Decimal         @default(0) @db.Decimal(14, 2)
+  orderCount    Int             @default(0)
+  firstOrderAt  DateTime?
+  lastOrderAt   DateTime?
+  segment       CustomerSegment @default(NEW)
+  /// Markers used by the lifecycle cron to avoid double-sending.
+  reminder7At   DateTime?
+  comeback30At  DateTime?
+  upsellAt      DateTime?
+  computedAt    DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([segment])
+  @@index([lastOrderAt])
+  @@index([lifetimeValue])
+}
+
+/// Singleton row that holds the public site header configuration. Read
+/// by the storefront `<Header>` (cached per-request) and written by
+/// the admin "Header" settings page. Keeping it as a single row keeps
+/// fetches index-free and avoids any "which row wins?" ambiguity.
+model HeaderSettings {
+  id          String   @id @default("singleton")
+  /// Optional uploaded logo. When null, the wordmark + DP gradient
+  /// chip from `logoText` is rendered instead.
+  logoUrl     String?
+  logoText    String   @default("DubaiPro")
+  /// Top-bar phone number, displayed verbatim. Empty hides the link.
+  phoneNumber String   @default("")
+  /// Top-bar slogan ("Shipping from Dubai" by default).
+  topbarText  String   @default("Shipping from Dubai")
+  showTopBar  Boolean  @default(true)
+  /// Visibility toggles for individual main-header surfaces.
+  showSearch  Boolean  @default(true)
+  /// Right-side CTA on the nav bar.
+  ctaLabel    String   @default("Request quote")
+  ctaHref     String   @default("/contact?type=quote")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Controls which filter panels are visible on the storefront and how
+/// they behave. Singleton row — admins edit it from the Settings hub.
+model FilterSettings {
+  id                    String   @id @default("singleton")
+  showPriceFilter       Boolean  @default(true)
+  showBrandFilter       Boolean  @default(true)
+  showSupplierFilter    Boolean  @default(true)
+  showInStockFilter     Boolean  @default(true)
+  showB2BFilter         Boolean  @default(true)
+  /// Rating-stars quick filter (★4+, ★3+ …).
+  showRatingFilter      Boolean  @default(true)
+  /// "Has active coupon" quick filter.
+  showDiscountFilter    Boolean  @default(true)
+  /// "New arrivals" (products created in the last 30 days).
+  showNewArrivalsFilter Boolean  @default(true)
+  /// Free-text search box inside the filter panel.
+  showSearchFilter      Boolean  @default(true)
+  maxBrandsVisible      Int      @default(8)
+  maxSuppliersVisible   Int      @default(8)
+  priceSliderStep       Int      @default(10)
+  priceLabel            String   @default("Price Range")
+  brandLabel            String   @default("Brand")
+  supplierLabel         String   @default("Supplier")
+  availabilityLabel     String   @default("Availability")
+  ratingLabel           String   @default("Rating")
+  discountLabel         String   @default("Deals")
+  newArrivalsLabel      String   @default("New Arrivals")
+  searchLabel           String   @default("Search products")
+  updatedAt             DateTime @updatedAt
+}
+
+/// Status for CMS pages. DRAFT = not yet visible on the public site;
+/// PUBLISHED = live. Replaces the old boolean `isActive` for richer
+/// editorial workflows. `isActive` is kept in sync on write so legacy
+/// callers that read it continue to work.
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Block types supported by the page section builder. Adding a new
+/// type requires (1) this enum extension, (2) a Prisma migrate step,
+/// and (3) a renderer branch in `components/cms/SectionRenderer.tsx`.
+enum PageSectionType {
+  HERO
+  RICH_TEXT
+  IMAGE_BANNER
+  CTA_BLOCK
+  FEATURES_GRID
+  FAQ
+  SPACER
+  PRODUCT_GRID
+  STATS
+  TRUST_SECTION
+  SUPPLIER_SHOWCASE
+  BLOG_POSTS
+  AUCTION_SHOWCASE
+}
+
+/// Discriminator for `NavigationItem.type`.
+///
+/// - `CUSTOM`: free-form link, the admin types `href` directly. Used
+///   for external URLs and ad-hoc paths like `/contact?type=quote`.
+/// - `PAGE`: link auto-resolves to `/[locale]/<page.slug>` from a
+///   linked `Page` row. The stored `href` is kept in sync but the
+///   page slug is the source of truth at render time, so renaming a
+///   page automatically updates every nav item that points to it.
+enum NavigationItemType {
+  CUSTOM
+  PAGE
+}
+
+/// Top-level navigation links rendered in the nav bar. Order is the
+/// single source of truth for visual ordering; `isActive=false` hides
+/// without deleting (so an admin can stage a campaign link).
+model NavigationItem {
+  id        String             @id @default(cuid())
+  label     String
+  /// Either an absolute path ("/products") or a full URL. Locale prefix
+  /// is added at render time, so do NOT include "/en" here. When
+  /// `type=PAGE` this is auto-derived from `page.slug`.
+  href      String
+  /// `CUSTOM` (admin types href) or `PAGE` (linked to a `Page` row).
+  type      NavigationItemType @default(CUSTOM)
+  /// FK to `Page` when `type=PAGE`. Set null on page delete so the
+  /// nav item survives as a `CUSTOM` link the admin can fix up.
+  pageId    String?
+  order     Int                @default(0)
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  page Page? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([isActive, order])
+  @@index([pageId])
+}
+
+/// Editorial / content pages managed from `/admin/pages` and rendered
+/// at `/[locale]/<slug>`. Body (legacy HTML) is kept for backward
+/// compatibility; new pages use the `sections` block architecture.
+/// `status` drives visibility: only PUBLISHED pages are served publicly.
+/// `locale` is informational ("en", "fa", …) — empty = language-agnostic.
+model Page {
+  id              String     @id @default(cuid())
+  title           String
+  /// URL-safe slug, unique site-wide. Renamed safely because nav items
+  /// resolve their href via the FK at render time.
+  slug            String     @unique
+  /// Legacy plain-HTML body. Empty on new pages that use `sections`.
+  body            String     @default("") @db.Text
+  metaTitle       String?
+  metaDescription String?
+  /// Editorial status. PUBLISHED = live on the public site.
+  status          PageStatus @default(DRAFT)
+  /// Optional locale hint ("en" / "fa" / "ar" / "ur"). Empty = all locales.
+  locale          String     @default("") @db.VarChar(8)
+  /// Kept in sync with `status` so legacy callers (NavigationItem) work.
+  isActive        Boolean    @default(false)
+  order           Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  navigationItems NavigationItem[]
+  sections        PageSection[]
+  seo             PageSeo?
+
+  @@index([isActive, order])
+  @@index([status])
+  @@index([locale])
+}
+
+/// One content block inside a CMS page. Rendered in `order` sequence by
+/// `SectionRenderer`. `config` shape is documented per type in
+/// `lib/pages/types.ts`.
+model PageSection {
+  id        String          @id @default(cuid())
+  pageId    String
+  type      PageSectionType
+  order     Int             @default(0)
+  config    Json            @default("{}")
+  isVisible Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, order])
+}
+
+/// Extended SEO metadata for a CMS page. 1:1 with `Page` (optional row).
+/// `metaTitle` / `metaDescription` live on `Page` itself; this model
+/// holds the fields that are less commonly used but needed for rich
+/// social-preview and structured-data scenarios.
+model PageSeo {
+  pageId         String   @id
+  ogImage        String?  @db.VarChar(2048)
+  canonicalUrl   String?  @db.VarChar(2048)
+  robots         String?  @db.VarChar(128)
+  structuredData Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+/// Featured categories surfaced inside the mega menu. One row per
+/// promoted category; the menu shows EVERY active category by default
+/// and uses these rows only to override title/image/order.
+model MegaMenuItem {
+  id         String   @id @default(cuid())
+  categoryId String   @unique
+  /// Optional override label (defaults to Category.name).
+  title      String?
+  /// Optional thumbnail rendered next to the link.
+  image      String?
+  order      Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, order])
+}
+
+/// Editorial blog posts. Standalone (no FK to User/Product) so authors
+/// can be free-form and product references stay loose — we resolve
+/// `productIds` at render time and skip missing/deleted ones gracefully.
+/// `faqs` is a JSON array of `{ q, a }` rendered into FAQPage JSON-LD.
+model BlogPost {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  excerpt         String    @db.Text
+  /// Sanitized HTML. Trusted because only admins create posts.
+  body            String    @db.Text
+  coverImage      String?
+  authorName      String?
+  metaTitle       String?   @db.VarChar(70)
+  metaDescription String?   @db.VarChar(200)
+  faqs            Json?
+  productIds      String[]  @default([])
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([publishedAt])
+}
+
+/// Discriminator for `HomepageSection.type`. The set is intentionally
+/// open-ended — adding a new value requires (1) a `prisma migrate`
+/// step (Postgres doesn't auto-extend enums) and (2) a renderer in
+/// `components/home/SectionRenderer.tsx`.
+enum HomepageSectionType {
+  HERO
+  CATEGORIES
+  FEATURED_PRODUCTS
+  TRUST
+  BECOME_SUPPLIER
+  RFQ
+  GLOBAL_SHOPPING
+  TOP_SUPPLIERS
+  AUCTION
+  BLOG
+}
+
+/// Storefront homepage builder. Each row represents one band on the
+/// public homepage; the renderer fans out by `type` and reads the
+/// per-row content + the `config` JSON for advanced overrides
+/// (selected product IDs, category subset, etc).
+///
+/// Why store metadata next to a JSON `config` blob? The strongly-typed
+/// columns (title, subtitle, ctaLabel, ...) cover ~80% of the editing
+/// surface and stay query-friendly. The remaining 20% is type-specific
+/// (e.g. "list of product IDs to feature") and would force an unwieldy
+/// schema if every section type got its own column. The `config`
+/// shape is documented per section in `lib/homepage/types.ts`.
+/// Translation cache. Every dynamic string the storefront needs to
+/// localise (homepage section copy, category names, blog titles, …)
+/// goes through `lib/i18n/translate.ts`, which looks the source text
+/// up here first and only calls the upstream provider on a miss.
+///
+/// Why a hash + the raw text together?
+///   - `sourceHash` is the unique key (SHA-256 short prefix) so we can
+///     query without trying to index a TEXT column.
+///   - `sourceText` is denormalised so we can audit / re-translate
+///     without joining anywhere else.
+///
+/// `provider` records *which* engine produced the translation so we
+/// can selectively invalidate when we swap to a higher-quality
+/// provider later.
+model Translation {
+  id             String   @id @default(cuid())
+  sourceHash     String   @db.VarChar(64)
+  sourceLocale   String   @db.VarChar(8)
+  targetLocale   String   @db.VarChar(8)
+  sourceText     String   @db.Text
+  translatedText String   @db.Text
+  provider       String   @db.VarChar(32)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([sourceHash, targetLocale])
+  @@index([targetLocale])
+}
+
+/// Lifecycle of a single auction lot.
+///   - DRAFT     admin is still preparing the listing.
+///   - SCHEDULED bidding opens at `startsAt`.
+///   - LIVE      bidding accepted; closes at `endsAt`.
+///   - ENDED     auto-flipped after `endsAt` (or by admin).
+///   - CANCELLED admin pulled the lot before close.
+enum AuctionStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+/// One auction lot. Money fields are kept in AED (the storage canonical
+/// currency) and converted at render time via the existing `<Price>`
+/// component, matching the rest of the catalog.
+///
+/// `currentBid` is denormalised on the row so listing pages don't have
+/// to aggregate `AuctionBid` for every card. The `placeBid` service
+/// updates both rows in a single transaction so the two never drift.
+model Auction {
+  id           String        @id @default(cuid())
+  /// URL-safe slug, unique site-wide. Used for `/auctions/<slug>`.
+  slug         String        @unique
+  title        String        @db.VarChar(200)
+  description  String        @default("") @db.Text
+  imageUrl     String?       @db.VarChar(2048)
+  /// Reserve / opening price. Bids must be ≥ `currentBid + minIncrement`,
+  /// or ≥ `startingBid` for the very first bid.
+  startingBid  Decimal       @db.Decimal(12, 2)
+  /// Latest accepted bid. Mirrors `AuctionBid.amount` for the latest row.
+  /// `0` until the first bid lands.
+  currentBid   Decimal       @default(0) @db.Decimal(12, 2)
+  /// Minimum bid increment over `currentBid`. Stored per-lot so admins
+  /// can tune cheap vs. expensive lots independently.
+  minIncrement Decimal       @default(1) @db.Decimal(12, 2)
+  currency     String        @default("AED") @db.VarChar(3)
+  /// When bidding opens. `LIVE` status is inferred by comparing now()
+  /// to this and `endsAt` — see `lib/auctions/service.ts`.
+  startsAt     DateTime
+  endsAt       DateTime
+  status       AuctionStatus @default(DRAFT)
+  /// Hidden floor price. If set, "reserve met" is shown when currentBid >= this.
+  reservePrice Decimal?      @db.Decimal(12, 2)
+  /// Denormalized bid count — incremented atomically in placeBid transaction.
+  totalBids    Int           @default(0)
+  /// Lightweight view counter, incremented on page load.
+  totalViews   Int           @default(0)
+  /// Winner set when auction transitions to ENDED and a bid exists.
+  winnerUserId String?
+  /// Optional supplier — when set, the lot links to that supplier's
+  /// catalog from the detail page.
+  supplierId   String?
+  /// Optional category — drives breadcrumbs, related products, and
+  /// listing filters.
+  categoryId   String?
+  /// Display order in the admin list. Public pages sort by `endsAt`.
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  supplier Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  category Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  winner   User?          @relation("AuctionWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  bids     AuctionBid[]
+  watches  AuctionWatch[]
+  images   AuctionImage[]
+
+  @@index([status, endsAt])
+  @@index([endsAt])
+  @@index([supplierId])
+  @@index([categoryId])
+  @@index([winnerUserId])
+}
+
+/// Append-only bid history. We keep every bid (including outbid ones)
+/// so the auction page can show "12 bids · highest at AED 4,500" and so
+/// admins can audit if disputes come up.
+///
+/// `userId` is required — only authenticated users can bid. Anonymous
+/// "watch only" is allowed by design.
+model AuctionBid {
+  id        String   @id @default(cuid())
+  auctionId String
+  userId    String
+  amount    Decimal  @db.Decimal(12, 2)
+  currency  String   @default("AED") @db.VarChar(3)
+  createdAt DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Users watching an auction (for engagement metrics + future notifications).
+model AuctionWatch {
+  id        String   @id @default(cuid())
+  auctionId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, userId])
+  @@index([auctionId])
+  @@index([userId])
+}
+
+/// Additional images for an auction lot (gallery carousel).
+model AuctionImage {
+  id        String   @id @default(cuid())
+  auctionId String
+  imageUrl  String   @db.VarChar(2048)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, order])
+}
+
+model HomepageSection {
+  id                String              @id @default(cuid())
+  /// Section discriminator. The storefront renders rows in `order` and
+  /// dispatches by `type`, so duplicating a section (eg. two HERO bands
+  /// for A/B copy) is allowed — admins decide via the order/active
+  /// switches which one is live.
+  type              HomepageSectionType
+  title             String              @db.VarChar(200)
+  subtitle          String?             @db.Text
+  /// Primary CTA button label (e.g. "Browse Products").
+  ctaLabel          String?             @db.VarChar(100)
+  ctaHref           String?             @db.VarChar(500)
+  /// Secondary CTA, only used by hero-style sections.
+  ctaSecondaryLabel String?             @db.VarChar(100)
+  ctaSecondaryHref  String?             @db.VarChar(500)
+  /// Optional accent badge above the title (hero "Direct from UAE").
+  badge             String?             @db.VarChar(100)
+  /// Optional hero / banner image. Used by HERO + BECOME_SUPPLIER +
+  /// RFQ; ignored by sections that compose their own visuals.
+  imageUrl          String?             @db.VarChar(2048)
+  /// Per-type free-form configuration. See `lib/homepage/types.ts`
+  /// for the documented shapes (e.g. `{ productIds: string[] }`).
+  config            Json?
+  isActive          Boolean             @default(true)
+  /// Visual order on the storefront (asc). Reordering is the primary
+  /// admin interaction so this is the only index we strictly need.
+  order             Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([isActive, order])
+}
+
+// ─── Dynamic attribute system ────────────────────────────────────────────────
+
+/// Global library of filterable product attributes (Size, Color, Processor…).
+/// Admins create these once and then assign them to individual categories.
+model AttributeDefinition {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  /// "select" = multi-select chips, "number" = range slider, "boolean" = toggle
+  type             String   @default("select") @db.VarChar(16)
+  /// Display unit appended to values (e.g. "GHz", "kg"). Null for select/boolean.
+  unit             String?  @db.VarChar(16)
+  /// Predefined options for "select" type: JSON string[]. Null for other types.
+  options          Json?
+  sortOrder        Int      @default(0)
+  /// Localized names: { "en": "Size", "fa": "سایز", "ar": "الحجم", "ur": "سائز" }
+  nameTranslations Json?
+  /// Admin grouping label (e.g. "Appearance", "Specifications"). Null = ungrouped.
+  group            String?  @db.VarChar(64)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  categoryAttributes CategoryAttribute[]
+  productValues      ProductAttributeValue[]
+
+  @@index([slug])
+}
+
+/// Links an attribute to a category and controls its filter behaviour.
+model CategoryAttribute {
+  id           String  @id @default(cuid())
+  categoryId   String
+  attributeId  String
+  /// When true the attribute appears as a filter panel section.
+  isFilterable Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  category  Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attribute AttributeDefinition @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, attributeId])
+  @@index([categoryId])
+}
+
+/// Per-category override of the global FilterSettings.
+/// Null on any Boolean field means "inherit from global settings".
+model CategoryFilterConfig {
+  categoryId            String   @id
+  showPriceFilter       Boolean?
+  showBrandFilter       Boolean?
+  showSupplierFilter    Boolean?
+  showInStockFilter     Boolean?
+  showB2BFilter         Boolean?
+  showRatingFilter      Boolean?
+  showDiscountFilter    Boolean?
+  showNewArrivalsFilter Boolean?
+  showSearchFilter      Boolean?
+  updatedAt             DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+/// Central media library. Every admin upload is tracked here so the
+/// gallery panel can display, search, and manage all files in one place.
+/// `folder` is a free-form label (general | products | categories |
+/// banners | blog | brands) that the admin assigns on upload or edit.
+model MediaAsset {
+  id           String   @id @default(cuid())
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  url          String   @db.VarChar(2048)
+  thumbnailUrl String?  @db.VarChar(2048)
+  mimeType     String   @db.VarChar(64)
+  size         Int
+  width        Int?
+  height       Int?
+  alt          String?  @db.VarChar(255)
+  title        String?  @db.VarChar(255)
+  caption      String?  @db.VarChar(500)
+  folder       String   @default("general") @db.VarChar(64)
+  tags         String[]
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // ── Smart Media Engine extensions (added 2026-05) ──────────────────
+  /// Long-form SEO title used for sitemap-images and ImageObject JSON-LD.
+  seoTitle          String?  @db.VarChar(160)
+  /// SEO description / longer caption (open-graph fallback).
+  description       String?  @db.VarChar(500)
+  /// Keyword list for image SEO and search.
+  keywords          String[]
+  /// Approximate dominant color (#RRGGBB) for skeleton/background tinting.
+  dominantColor     String?  @db.VarChar(9)
+  /// Base64 LQIP placeholder used by next/image `placeholder="blur"`.
+  blurDataURL       String?  @db.Text
+  /// SHA-256 of the original bytes — enables duplicate detection.
+  hash              String?  @unique @db.VarChar(64)
+  /// Smart-crop focal point (0..1 normalized).
+  focalX            Float?
+  focalY            Float?
+  /// Upload context preset key (product-cover | hero | category | …).
+  context           String?  @db.VarChar(32)
+  /// Health/SEO score 0-100 (computed by lib/media/score.ts).
+  optimizationScore Int?
+  /// Compression ratio achieved on the master format (0..1).
+  compressionRatio  Float?
+  /// Free-form metadata (kept EXIF, processing notes, etc.).
+  metadata          Json?
+
+  // ── P1 additions (2026-06) ──────────────────────────────────────────
+  /// Processing state: pending | processing | done | failed.
+  processingStatus  String   @default("done") @db.VarChar(20)
+  /// Storage backend: local | s3 | r2 | cloudflare.
+  storageProvider   String   @default("local") @db.VarChar(20)
+  /// URL to the original unprocessed file (stored for reprocessing).
+  originalUrl       String?  @db.VarChar(2048)
+  /// Full EXIF metadata extracted at upload time.
+  exifData          Json?
+
+  uploadedBy    User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  variants      MediaVariant[]
+  usages        MediaUsage[]
+  transformJobs MediaTransformJob[]
+
+  @@index([folder])
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@index([mimeType])
+  @@index([context])
+  @@index([hash])
+  @@index([processingStatus])
+  @@index([storageProvider])
+}
+
+/// One physical file per (asset, preset, format). The original master
+/// upload lives on `MediaAsset.url`; smaller responsive renditions and
+/// alternate formats (AVIF/WebP/JPEG) are tracked here so storefront
+/// `<SmartImage>` can build a perfect `srcSet` without filesystem
+/// scanning. Deleting the parent asset cascades to wipe these rows;
+/// the FS cleanup is performed by the API DELETE handler.
+model MediaVariant {
+  id        String   @id @default(cuid())
+  assetId   String
+  /// Size preset name: thumb | small | medium | large | original
+  preset    String   @db.VarChar(32)
+  /// Encoded format: webp | avif | jpeg | png
+  format    String   @db.VarChar(8)
+  url       String   @db.VarChar(2048)
+  width     Int
+  height    Int
+  size      Int
+  createdAt DateTime @default(now())
+
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, preset, format])
+  @@index([assetId])
+}
+
+/// Cross-reference table: where is a given MediaAsset referenced from?
+/// Populated by the upload pipeline whenever an admin attaches an asset
+/// to an entity (Product.imageUrl, Category.imageUrl, BlogPost.coverImage,
+/// HomepageSection.imageUrl, …). Non-authoritative — the legacy URL
+/// columns on those models remain the source of truth so existing
+/// queries are NOT affected. This table only powers usage detection
+/// in the gallery ("delete is unsafe — used in 3 products") and
+/// orphan cleanup tasks.
+model MediaUsage {
+  id         String   @id @default(cuid())
+  assetId    String
+  /// Owning entity discriminator: product | category | brand | page |
+  /// blog | hero | header | mega-menu | auction | review | user | …
+  entityType String   @db.VarChar(32)
+  /// FK value of the owning entity (string to handle cuid/int mixes).
+  entityId   String   @db.VarChar(64)
+  /// Field on the owning entity that points at this asset
+  /// (e.g. "imageUrl", "coverImage", "images[2]").
+  field      String   @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, entityType, entityId, field])
+  @@index([entityType, entityId])
+  @@index([assetId])
+}
+
+/// Async transform/reprocess job for a MediaAsset.
+/// The pipeline relay worker polls for pending jobs and executes them.
+model MediaTransformJob {
+  id          String    @id @default(cuid())
+  assetId     String
+  /// Action: reprocess | resize | convert | optimize
+  action      String    @db.VarChar(32)
+  /// Job state: pending | running | done | failed
+  status      String    @default("pending") @db.VarChar(20)
+  /// Lower number = higher priority.
+  priority    Int       @default(0)
+  /// Action-specific parameters (target format, quality, preset, …).
+  params      Json?
+  attempts    Int       @default(0)
+  error       String?   @db.VarChar(500)
+  scheduledAt DateTime  @default(now())
+  startedAt   DateTime?
+  doneAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledAt])
+  @@index([assetId])
+}
+
+/// A marketing broadcast sent to a segment or all users.
+/// Tracks aggregate delivery + engagement counters (updated by the
+/// send worker and the /api/marketing/track endpoint).
+model Campaign {
+  id              String           @id @default(cuid())
+  name            String
+  channel         CampaignChannel
+  status          CampaignStatus   @default(DRAFT)
+  /// Email subject line (null for WhatsApp campaigns).
+  subject         String?
+  /// Template body — supports {name} {product} {price} {link} {couponCode} placeholders.
+  body            String           @db.Text
+  /// Null = all users with a valid contact for this channel.
+  segment         CustomerSegment?
+  /// Coupon code to embed in the message ({couponCode} placeholder).
+  couponCode      String?
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  totalRecipients Int              @default(0)
+  totalSent       Int              @default(0)
+  totalFailed     Int              @default(0)
+  totalOpened     Int              @default(0)
+  totalClicked    Int              @default(0)
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  recipients CampaignRecipient[]
+
+  @@index([status])
+  @@index([channel])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+/// One row per recipient per campaign. Tracks per-user delivery state
+/// and engagement (open pixel / click tracking).
+model CampaignRecipient {
+  id         String    @id @default(cuid())
+  campaignId String
+  userId     String?
+  email      String?
+  phone      String?
+  /// PENDING | SENT | FAILED | BOUNCED
+  status     String    @default("PENDING")
+  sentAt     DateTime?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  error      String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, email])
+  @@unique([campaignId, phone])
+  @@index([campaignId, status])
+  @@index([userId])
+}
+
+/// Persistent named folders for the media gallery.
+/// Allows admins to create empty folders before uploading files.
+model GalleryFolder {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(64)
+  label     String?  @db.VarChar(128)
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  parent   GalleryFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children GalleryFolder[] @relation("FolderTree")
+
+  @@index([name])
+  @@index([parentId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Enterprise RFQ Ecosystem (B2B sourcing — Alibaba-grade)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Lifecycle of a standalone sourcing request.
+enum RfqRequestStatus {
+  DRAFT
+  PENDING_REVIEW
+  OPEN
+  NEGOTIATING
+  QUOTED
+  ACCEPTED
+  FULFILLED
+  CLOSED
+  CANCELLED
+  EXPIRED
+}
+
+/// Who can see the RFQ. PUBLIC = any active supplier; INVITED_ONLY = only
+/// suppliers in RfqSupplierInvite; PRIVATE = buyer + admin only.
+enum RfqVisibility {
+  PUBLIC
+  INVITED_ONLY
+  PRIVATE
+}
+
+/// State of a single supplier quote on an RFQ.
+enum RfqQuoteStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Buyer-declared urgency shown to suppliers in their inbox.
+enum RfqUrgency {
+  STANDARD
+  URGENT
+  ASAP
+}
+
+/// Standalone B2B sourcing request. Separate from the legacy `RFQ` model
+/// (product-tied contact form). Buyers post an RfqRequest; suppliers
+/// respond with RfqQuote; negotiation happens via RfqMessage.
+model RfqRequest {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  userId         String
+  title          String           @db.VarChar(300)
+  description    String           @db.Text
+  categoryId     String?
+  /// Optional reference product name/URL from the buyer.
+  productRef     String?          @db.VarChar(500)
+  quantity       Int
+  unit           String           @default("pcs") @db.VarChar(32)
+  targetPrice    Decimal?         @db.Decimal(12, 2)
+  currency       String           @default("USD") @db.VarChar(3)
+  /// ISO 3166-1 alpha-2 destination country.
+  shippingCountry String          @db.VarChar(2)
+  urgency        RfqUrgency       @default(STANDARD)
+  visibility     RfqVisibility    @default(PUBLIC)
+  status         RfqRequestStatus @default(DRAFT)
+  sourcingNotes  String?          @db.Text
+  expiresAt      DateTime?
+  /// Denormalized: incremented by service on each quote submission.
+  quoteCount     Int              @default(0)
+  viewCount      Int              @default(0)
+  /// Number of times the buyer has extended the deadline.
+  extensionCount Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  quotes      RfqQuote[]
+  messages    RfqMessage[]
+  attachments RfqAttachment[]
+  invites     RfqSupplierInvite[]
+  auditLogs   RfqAuditLog[]
+  outboxEvents RfqEventOutbox[]
+
+  @@index([userId, createdAt])
+  @@index([status, visibility])
+  @@index([categoryId])
+  @@index([slug])
+  @@index([expiresAt])
+  @@index([urgency, status])
+}
+
+/// File attachment uploaded by the buyer when creating an RFQ.
+model RfqAttachment {
+  id        String   @id @default(cuid())
+  rfqId     String
+  url       String   @db.VarChar(2048)
+  name      String   @db.VarChar(255)
+  mimeType  String?  @db.VarChar(128)
+  size      Int?
+  createdAt DateTime @default(now())
+
+  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId])
+}
+
+/// Supplier invite to a specific RFQ. Created by the buyer (or by the
+/// auto-matching engine). `viewedAt` is stamped when the supplier first
+/// opens the RFQ detail page from their inbox.
+model RfqSupplierInvite {
+  id         String    @id @default(cuid())
+  rfqId      String
+  supplierId String
+  invitedAt  DateTime  @default(now())
+  viewedAt   DateTime?
+
+  rfq      RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplier Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([rfqId, supplierId])
+  @@index([supplierId, invitedAt])
+  @@index([rfqId])
+}
+
+/// Supplier quote in response to an RfqRequest. One active quote per
+/// (rfqId, supplierId). Re-quotes: supplier WITHDRAWs then resubmits,
+/// or edits while still in DRAFT/SUBMITTED state.
+model RfqQuote {
+  id            String         @id @default(cuid())
+  rfqId         String
+  supplierId    String
+  price         Decimal        @db.Decimal(12, 2)
+  currency      String         @default("USD") @db.VarChar(3)
+  moq           Int?
+  leadTimeDays  Int?
+  shippingTerms String?        @db.VarChar(100)
+  paymentTerms  String?        @db.VarChar(100)
+  validUntil    DateTime?
+  message       String?        @db.Text
+  attachmentUrl String?        @db.VarChar(2048)
+  status        RfqQuoteStatus @default(SUBMITTED)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  rfq      RfqRequest   @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplier Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  messages RfqMessage[]
+
+  @@unique([rfqId, supplierId])
+  @@index([rfqId, status])
+  @@index([supplierId, createdAt])
+  @@index([status])
+}
+
+/// Per-RFQ (or per-Quote) negotiation message. Separate from the general
+/// Conversation/Message system — scoped to a single sourcing deal.
+model RfqMessage {
+  id            String    @id @default(cuid())
+  rfqId         String
+  /// When non-null, this message is scoped to a specific quote thread.
+  quoteId       String?
+  senderId      String
+  content       String    @db.Text
+  attachmentUrl String?   @db.VarChar(2048)
+  isRead        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  rfq    RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  quote  RfqQuote?  @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId, createdAt])
+  @@index([quoteId, createdAt])
+  @@index([senderId])
+  @@index([isRead])
+}
+
+enum OutboxStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+/// Immutable append-only audit log for every RFQ state transition.
+/// actorId is NOT a FK — can be 'system' for automated transitions.
+model RfqAuditLog {
+  id          String            @id @default(cuid())
+  rfqId       String
+  fromStatus  RfqRequestStatus?
+  toStatus    RfqRequestStatus
+  /// userId or 'system'
+  actorId     String            @db.VarChar(36)
+  actorRole   String            @db.VarChar(20)
+  trigger     String            @db.VarChar(100)
+  reason      String?           @db.VarChar(500)
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+
+  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId, createdAt])
+  @@index([createdAt])
+}
+
+/// Transactional outbox for domain events. Written in same DB transaction
+/// as the state change; delivered async by a background relay.
+model RfqEventOutbox {
+  id          String       @id @default(cuid())
+  rfqId       String
+  eventType   String       @db.VarChar(100)
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  deliveredAt DateTime?
+
+  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([rfqId])
+}
+
+/// Stores the value of one attribute for one product.
+model ProductAttributeValue {
+  id          String @id @default(cuid())
+  productId   String
+  attributeId String
+  /// Always stored as text; parsed to the appropriate type in the service layer.
+  value       String @db.Text
+
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute AttributeDefinition @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeId])
+  @@index([productId])
+}
+
+/// Media system runtime settings — configurable from admin panel without code/env changes.
+/// Singleton row (id = "singleton"). DB values override env vars at runtime.
+/// API keys are stored as-is (admin-only access, same pattern as PaymentSettings).
+model MediaSettings {
+  id            String   @id @default("singleton")
+  updatedAt     DateTime @updatedAt
+
+  /// AI Vision provider: openai | gemini | claude | null (disabled)
+  aiProvider    String?  @db.VarChar(20)
+  /// Provider API key (overrides MEDIA_AI_API_KEY env var)
+  aiApiKey      String?  @db.VarChar(500)
+  /// Model override, e.g. gpt-4o, gemini-1.5-flash, claude-3-haiku-20240307
+  aiModel       String?  @db.VarChar(100)
+  /// Custom base URL for Azure OpenAI, Ollama, or self-hosted proxies
+  aiBaseUrl     String?  @db.VarChar(500)
+  /// Request timeout in milliseconds (default 10 000)
+  aiTimeoutMs   Int      @default(10000)
+  /// Automatically run AI metadata generation on new image uploads
+  aiAutoGenerate Boolean @default(false)
+  /// Enable web search grounding (Gemini google_search / OpenAI Responses web_search)
+  aiUseWebSearch Boolean @default(false)
+}
