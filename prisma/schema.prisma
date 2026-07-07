@@ -86,12 +86,65 @@ enum BusinessType {
   OTHER
 }
 
+/// Top-level account intent chosen on `/register`. Mirrors the buyer vs
+/// supplier split while `UserRole` remains the authoritative permission
+/// boundary. Stored so analytics/onboarding can distinguish a buyer who
+/// later upgrades from a user who registered as a supplier from day one.
+enum AccountType {
+  BUYER
+  SUPPLIER
+}
+
+/// Company classification captured during supplier onboarding. Distinct
+/// from the legacy `BusinessType` enum (which omits RETAILER /
+/// SERVICE_PROVIDER) so the self-service wizard matches the published
+/// option list exactly without disturbing existing storefront filters.
+enum CompanyType {
+  MANUFACTURER
+  TRADING_COMPANY
+  DISTRIBUTOR
+  WHOLESALER
+  RETAILER
+  SERVICE_PROVIDER
+}
+
+/// Lifecycle of the self-service supplier registration wizard. Kept
+/// separate from `SupplierStatus` (the storefront-visibility lifecycle)
+/// so onboarding progress and admin moderation never collide.
+///   - DRAFT    wizard saved but not submitted.
+///   - PENDING  submitted, awaiting review.
+///   - APPROVED review passed (admin approval ships in a later sprint).
+///   - REJECTED review failed.
+enum SupplierOnboardingStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Type of a supplier-uploaded onboarding document/media. Singleton types
+/// (one row per supplier): TRADE_LICENSE, PASSPORT, STORE_VIDEO. Gallery
+/// types (many rows allowed): STORE_PHOTO, WAREHOUSE_PHOTO.
+enum SupplierDocumentType {
+  TRADE_LICENSE
+  PASSPORT
+  STORE_PHOTO
+  WAREHOUSE_PHOTO
+  STORE_VIDEO
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
   password     String
   role         UserRole @default(CUSTOMER)
+  /// Top-level account intent chosen at registration. `UserRole` stays the
+  /// authoritative permission boundary; this is descriptive metadata.
+  accountType  AccountType @default(BUYER)
+  /// Account mobile number. Optional for legacy/buyer accounts; required &
+  /// unique for supplier self-registration (enforced in the service layer).
+  phone        String?  @unique
   /// Public-facing affiliate code. Lazily generated on first /account/referral
   /// visit (or on demand). Indexed unique so we can resolve by `?ref=`.
   referralCode String?  @unique
@@ -121,6 +174,7 @@ model User {
   uploadedMedia          MediaAsset[]
   rfqRequests            RfqRequest[]
   rfqMessages            RfqMessage[]
+  b2bInquiries           B2BInquiry[] // Alibaba-style product inquiries
   /// Suppliers this user follows (one row per follow). Cascade-deleted
   /// with the user. The reverse counter lives on `Supplier.followerCount`.
   followedSuppliers      SupplierFollower[]
@@ -221,6 +275,8 @@ model Supplier {
   // ─── Trust & lifecycle ────────────────────────────────────────────────
   tier                  SupplierTier   @default(STANDARD)
   status                SupplierStatus @default(PENDING_REVIEW)
+  /// Whether this supplier is allowed to publish products. Set by admin.
+  canListProducts       Boolean        @default(false)
   /// Admin-curated featured flag — surfaced on home Top Suppliers band.
   isFeatured            Boolean        @default(false)
   /// When the current verification (tier) was granted.
@@ -231,6 +287,33 @@ model Supplier {
   /// Optional expiry for the verification — admin sets when documents
   /// have an expiry date (ISO cert, license, etc.).
   verificationExpiresAt DateTime?
+
+  // ─── Self-service onboarding (supplier registration wizard) ───────────
+  /// Legal registered company name (Step 2). May differ from `name`,
+  /// which is the public storefront display name.
+  companyName        String?
+  /// Public-facing trade / brand name.
+  tradeName          String?
+  /// Trade license / registration number issued by the authority.
+  tradeLicenseNumber String?
+  /// Company classification picked in the wizard (Step 2).
+  companyType        CompanyType?
+  /// Additional business contact numbers captured during onboarding
+  /// (Step 1). The primary login mobile lives on `User.phone`; this array
+  /// holds the full ordered set (including the primary) for display.
+  phones             String[] @default([])
+  /// Emirate / state (Step 3). `country` + `city` already exist above.
+  emirate            String?
+  /// Free-form street address (Step 3).
+  address            String? @db.Text
+  /// Geo-coordinates reserved for future Google Maps integration. Null
+  /// until the address is geocoded.
+  latitude           Float?
+  longitude          Float?
+  /// Primary business category (Step 4). One per supplier.
+  primaryCategoryId  String?
+  /// Wizard lifecycle, independent of the storefront-visibility `status`.
+  onboardingStatus   SupplierOnboardingStatus @default(DRAFT)
 
   // ─── SEO ──────────────────────────────────────────────────────────────
   metaTitle       String? @db.VarChar(70)
@@ -247,20 +330,26 @@ model Supplier {
 
   updatedAt DateTime @default(now()) @updatedAt
 
-  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products         Product[]
-  rfqs             RFQ[]
-  rfqQuotes        RfqQuote[]
-  rfqInvites       RfqSupplierInvite[]
-  auctions         Auction[]
-  certifications   SupplierCertification[]
-  followers        SupplierFollower[]
-  supplierReviews  SupplierReview[]
-  verificationLogs SupplierVerificationLog[]
+  user                User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products            Product[]
+  rfqs                RFQ[]
+  rfqQuotes           RfqQuote[]
+  rfqInvites          RfqSupplierInvite[]
+  auctions            Auction[]
+  certifications      SupplierCertification[]
+  followers           SupplierFollower[]
+  supplierReviews     SupplierReview[]
+  verificationLogs    SupplierVerificationLog[]
+  primaryCategory     Category?                 @relation("SupplierPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  secondaryCategories SupplierCategory[]
+  documents           SupplierDocument[]
+  verifications       SupplierVerification[]
 
   @@index([country])
   @@index([verified])
   @@index([status])
+  @@index([onboardingStatus])
+  @@index([primaryCategoryId])
   @@index([tier, status])
   @@index([isFeatured, status])
   @@index([slug])
@@ -299,6 +388,62 @@ model SupplierCertification {
   @@index([supplierId, status])
   @@index([supplierId, order])
   @@index([type])
+}
+
+/// Secondary business categories a supplier operates in (Step 4 of the
+/// onboarding wizard). The single primary category lives on
+/// `Supplier.primaryCategoryId`; this join holds the additional ones.
+/// Composite unique prevents the same category being added twice.
+model SupplierCategory {
+  id         String   @id @default(cuid())
+  supplierId String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, categoryId])
+  @@index([categoryId])
+  @@index([supplierId])
+}
+
+/// A document uploaded by a supplier during onboarding (Step 5). The file
+/// itself is stored by the upload handler; only the public URL + type are
+/// mirrored here. Separate from `SupplierCertification` so the onboarding
+/// document set stays clean and independently scalable.
+model SupplierDocument {
+  id         String               @id @default(cuid())
+  supplierId String
+  type       SupplierDocumentType
+  fileUrl    String               @db.VarChar(2048)
+  createdAt  DateTime             @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([supplierId, type])
+}
+
+/// Verification record for a supplier onboarding submission. Reserved for
+/// the (future) admin-approval workflow — created here so the data model
+/// is ready without shipping the review UI yet. Multiple rows allow a
+/// re-submission history (reject → fix → re-submit).
+model SupplierVerification {
+  id         String                   @id @default(cuid())
+  supplierId String
+  status     SupplierOnboardingStatus @default(PENDING)
+  /// Admin id (no FK, see Supplier.verifiedById rationale).
+  reviewerId String?
+  notes      String?                  @db.Text
+  reviewedAt DateTime?
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([status])
 }
 
 /// A user following a supplier. Composite unique enforces 1 follow per
@@ -400,6 +545,10 @@ model Category {
   categoryAttributes CategoryAttribute[]
   filterConfig       CategoryFilterConfig?
   rfqRequests        RfqRequest[]
+  /// Suppliers that picked this category as their primary (Step 4).
+  primarySuppliers   Supplier[]            @relation("SupplierPrimaryCategory")
+  /// Secondary-category join rows pointing here.
+  supplierCategories SupplierCategory[]
 
   @@index([name])
   @@index([parentId])
@@ -431,8 +580,23 @@ model Product {
   currency        String   @default("USD") @db.VarChar(3)
   stock           Int      @default(0)
   isB2B           Boolean  @default(false)
+  isPublished     Boolean  @default(false) // Supplier can control visibility
   imageUrl        String?
-  images          Json?
+  images          Json? // Array of {url, alt, order}
+  videoUrls       Json? // Array of video URLs (Alibaba-style product videos)
+  // --- B2B / Alibaba-style fields ---
+  moq             Int?     @default(1) // Minimum Order Quantity
+  moqUnit         String?  @default("pieces") // Unit for MOQ
+  samplePrice     Decimal? @db.Decimal(12, 2) // Price for sample orders
+  sampleMOQ       Int?     @default(1) // MOQ for samples
+  tradeTerms      String?  @db.VarChar(50) // FOB, CIF, EXW, DDP, etc.
+  originCountry   String?  @db.VarChar(100) // Country of origin (e.g., "China", "UAE")
+  leadTimeDays    Int?     // Production lead time in days
+  warrantyYears   Int?     // Warranty period
+  customization   Json? // {isAvailable: boolean, options: string[], minOrder: number}
+  certifications  Json? // Array of {name, imageUrl, standard}
+  tierPricing     Json? // Array of {minQty, maxQty, price} for volume discounts
+  attributes      Json? // Key-value attributes for specifications table
   // Shipping metadata (all nullable → falls back to global defaults).
   weight          Float? // kg
   length          Float? // cm
@@ -443,6 +607,7 @@ model Product {
   metaTitle       String?  @db.VarChar(70)
   metaDescription String?  @db.VarChar(200)
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   supplier        Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   category        Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -454,18 +619,56 @@ model Product {
   reviews         Review[]
   coupons         Coupon[]
   attributeValues ProductAttributeValue[]
+  b2bInquiries    B2BInquiry[] // Alibaba-style "Send Inquiry" feature
 
   @@index([supplierId])
   @@index([categoryId])
   @@index([brandId])
   @@index([slug])
   @@index([isB2B])
+  @@index([isPublished])
   @@index([createdAt])
   @@index([price])
+  @@index([moq])
   /// Powers the storefront search ("title contains") + autocomplete.
   /// Postgres uses this btree index for prefix queries and pg_trgm for
   /// substring matches if the extension is enabled later.
   @@index([title])
+}
+
+/// Alibaba-style B2B inquiry system — buyers can send inquiries to suppliers
+model B2BInquiry {
+  id          String   @id @default(cuid())
+  productId   String
+  buyerId     String
+  quantity    Int
+  unit        String   @default("pieces")
+  message     String   @db.Text
+  status      String   @default("PENDING") // PENDING, REPLIED, CLOSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer       User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  replies     B2BInquiryReply[]
+
+  @@index([productId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model B2BInquiryReply {
+  id          String   @id @default(cuid())
+  inquiryId   String
+  senderId    String   // Can be buyer or supplier
+  senderRole  String   // BUYER or SUPPLIER
+  message     String   @db.Text
+  attachmentUrl String?
+  createdAt   DateTime @default(now())
+
+  inquiry     B2BInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
 }
 
 model Order {
@@ -954,8 +1157,11 @@ enum AutomationEventType {
   DISCOUNT_OFFER
   /// Enterprise RFQ ecosystem events (RfqRequest model).
   RFQ_REQUEST_CREATED
+  RFQ_PUBLISHED
+  RFQ_EXPIRED
   RFQ_QUOTE_RECEIVED
   RFQ_QUOTE_ACCEPTED
+  RFQ_STALE
   RFQ_EXPIRING
   RFQ_SUPPLIER_INVITED
 }
@@ -2020,6 +2226,10 @@ model RfqRequest {
   visibility     RfqVisibility    @default(PUBLIC)
   status         RfqRequestStatus @default(DRAFT)
   sourcingNotes  String?          @db.Text
+  /// Buyer's WhatsApp number (E.164, with country code) for supplier contact.
+  contactWhatsapp String?         @db.VarChar(32)
+  /// Optional buyer email for supplier contact.
+  contactEmail   String?          @db.VarChar(255)
   expiresAt      DateTime?
   /// Denormalized: incremented by service on each quote submission.
   quoteCount     Int              @default(0)
@@ -2096,6 +2306,12 @@ model RfqQuote {
   message       String?        @db.Text
   attachmentUrl String?        @db.VarChar(2048)
   status        RfqQuoteStatus @default(SUBMITTED)
+  /// Set when the buyer makes a material change (quantity, target price,
+  /// destination, specs, attachments) after this quote was submitted. The
+  /// supplier must reconfirm or revise; cleared on the next (re)submission.
+  isStale       Boolean        @default(false)
+  staleAt       DateTime?
+  staleReason   String?        @db.VarChar(300)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -2168,6 +2384,8 @@ model RfqEventOutbox {
   payload     Json
   status      OutboxStatus @default(PENDING)
   attempts    Int          @default(0)
+  /// Last delivery error message (null when delivered/pending). Set by the relay.
+  lastError   String?      @db.VarChar(1000)
   createdAt   DateTime     @default(now())
   deliveredAt DateTime?
 

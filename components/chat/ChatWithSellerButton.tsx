@@ -42,7 +42,7 @@ export function ChatWithSellerButton({
 
       if (res.status === 401) {
         router.push(
-          `/${locale}/login?redirect=${encodeURIComponent(returnPath)}`
+          `/${locale}/login?from=${encodeURIComponent(returnPath)}`
         );
         return;
       }

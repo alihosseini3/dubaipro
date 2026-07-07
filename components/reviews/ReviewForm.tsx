@@ -45,7 +45,7 @@ export function ReviewForm({ productId, locale }: Props) {
 
       if (res.status === 401) {
         router.push(
-          `/${locale}/login?redirect=${encodeURIComponent(
+          `/${locale}/login?from=${encodeURIComponent(
             `/${locale}/products`
           )}`
         );

@@ -37,11 +37,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const filters = parseSupplierListQuery(searchParams);
+    const locale = searchParams.get('locale') ?? 'en';
     const admin = await getAdminOrNull();
 
     const result = admin
       ? await listSuppliers(filters)
-      : await listPublicSuppliers(filters);
+      : await listPublicSuppliers(filters, locale);
 
     return NextResponse.json(result);
   } catch (error) {

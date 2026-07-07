@@ -67,6 +67,8 @@ export default async function RfqCreatePage({
     reviewLabelWhatsapp: t('create.reviewLabelWhatsapp'),
     reviewLabelEmail: t('create.reviewLabelEmail'),
     contactHeading: t('create.contactHeading'),
+    attachments: t('create.attachments'),
+    attachmentsHint: t('create.attachmentsHint'),
   };
 
   return (

@@ -21,6 +21,8 @@ export const QUOTE_SELECT = {
   message:       true,
   attachmentUrl: true,
   status:        true,
+  isStale:       true,
+  staleReason:   true,
   createdAt:     true,
   updatedAt:     true,
   supplier: {
@@ -49,6 +51,8 @@ export function mapQuote(q: QuoteRow): RfqQuoteCard {
     message:         q.message,
     attachmentUrl:   q.attachmentUrl,
     status:          q.status,
+    isStale:         q.isStale,
+    staleReason:     q.staleReason,
     createdAt:       q.createdAt,
     updatedAt:       q.updatedAt,
   };

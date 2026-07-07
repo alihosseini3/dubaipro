@@ -41,14 +41,16 @@ export async function getMediaSettings(): Promise<ResolvedMediaSettings> {
   /* Load from DB */
   const row = await prisma.mediaSettings.findUnique({ where: { id: 'singleton' } }).catch(() => null);
 
-  /* Merge DB → env → defaults (first non-empty wins) */
-  const provider  = row?.aiProvider ?? process.env.MEDIA_AI_PROVIDER   ?? '';
-  const apiKey    = row?.aiApiKey   ?? process.env.MEDIA_AI_API_KEY     ?? '';
+  /* Merge DB → env → defaults (first non-empty wins).
+   * OPENAI_API_KEY is accepted as a convenience alias for MEDIA_AI_API_KEY
+   * so projects that already have OpenAI configured don't need a second key. */
+  const apiKey    = row?.aiApiKey   ?? process.env.MEDIA_AI_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+  const provider  = row?.aiProvider ?? process.env.MEDIA_AI_PROVIDER ?? (apiKey && process.env.OPENAI_API_KEY ? 'openai' : '');
   const model     = row?.aiModel    ?? process.env.MEDIA_AI_MODEL       ?? '';
   const baseUrl   = row?.aiBaseUrl  ?? process.env.MEDIA_AI_BASE_URL    ?? '';
   const timeoutMs = row?.aiTimeoutMs ?? Number(process.env.MEDIA_AI_TIMEOUT_MS ?? 10_000);
-  const autoGenerate = row?.aiAutoGenerate ?? false;
-  const useWebSearch = row?.aiUseWebSearch ?? false;
+  const autoGenerate = row?.aiAutoGenerate ?? (process.env.MEDIA_AI_AUTO_GENERATE === 'true');
+  const useWebSearch  = row?.aiUseWebSearch  ?? (process.env.MEDIA_AI_USE_WEB_SEARCH === 'true');
 
   cached = {
     ai: {

@@ -49,11 +49,11 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
 
 /* ─── media card ──────────────────────────────────────────────────────────── */
 function LibraryCard({
-  asset, selected, active, bulkMode, copied, onSelect, onOpen, onCopy, onDelete,
+  asset, selected, active, bulkMode, copied, onSelect, onOpen, onPreview, onCopy, onDelete,
 }: {
   asset: LibraryAsset; selected: boolean; active: boolean; bulkMode: boolean;
   copied: string | null;
-  onSelect(): void; onOpen(): void; onCopy(): void; onDelete(): void;
+  onSelect(): void; onOpen(): void; onPreview(): void; onCopy(): void; onDelete(): void;
 }) {
   const isVideo = asset.mimeType.startsWith('video/');
   const ext     = asset.mimeType.split('/')[1]?.toUpperCase().slice(0, 4) ?? 'IMG';
@@ -107,6 +107,9 @@ function LibraryCard({
         )}
         {/* Hover overlay */}
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+          <OverlayBtn title="Preview" onClick={(e) => { e.stopPropagation(); onPreview(); }}>
+            <Ic d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" className="h-4 w-4" />
+          </OverlayBtn>
           <OverlayBtn title={copied === asset.url ? 'Copied!' : 'Copy URL'} onClick={(e) => { e.stopPropagation(); onCopy(); }}>
             {copied === asset.url
               ? <Ic d="M20 6L9 17l-5-5" className="h-4 w-4 text-emerald-400" />
@@ -166,6 +169,7 @@ export function MediaLibrary() {
   const [showAdvanced,  setShowAdvanced]  = useState(false);
   const [activeTab,         setActiveTab]         = useState<'library' | 'seo' | 'analytics' | 'tools'>('library');
   const [mobileFolderOpen, setMobileFolderOpen] = useState(false);
+  const [previewAsset,    setPreviewAsset]    = useState<LibraryAsset | null>(null);
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const sentinelRef    = useRef<HTMLDivElement>(null);
@@ -182,6 +186,16 @@ export function MediaLibrary() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [lib.hasMore, lib.loading, lib.loadingMore, lib.loadMore]);
+
+  /* ── lightbox keyboard handler ── */
+  useEffect(() => {
+    if (!previewAsset) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewAsset(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewAsset]);
 
   /* ── upload logic (mirrors GalleryManager) ── */
   const runImageUpload = useCallback(async (f: File, seo: PreparingSeoMeta, cfg: UploadConfig) => {
@@ -553,6 +567,7 @@ export function MediaLibrary() {
                       copied={lib.copied}
                       onSelect={() => lib.toggleSelect(asset.id)}
                       onOpen={() => { lib.setActiveAsset(asset); if (lib.bulkMode) lib.setBulkMode(false); }}
+                      onPreview={() => setPreviewAsset(asset)}
                       onCopy={() => lib.copyUrl(asset.url)}
                       onDelete={() => { if (confirm(t('deleteConfirm'))) void lib.deleteOne(asset.id); }}
                     />
@@ -649,6 +664,45 @@ export function MediaLibrary() {
           onReplace={(file) => handleReplace(lib.activeAsset!.id, file)}
           onSave={(data) => lib.saveAsset(lib.activeAsset!.id, data).then(() => {})}
         />
+      )}
+
+      {/* Lightbox Preview */}
+      {previewAsset && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => setPreviewAsset(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewAsset(null)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+          >
+            <Ic d="M18 6L6 18M6 6l12 12" className="h-6 w-6" />
+          </button>
+          <div className="relative max-h-[90vh] max-w-[90vw]">
+            {previewAsset.mimeType.startsWith('video/') ? (
+              <video
+                src={previewAsset.url}
+                controls
+                autoPlay
+                className="max-h-[90vh] max-w-[90vw] rounded-lg"
+              />
+            ) : (
+              <img
+                src={previewAsset.url}
+                alt={previewAsset.alt || previewAsset.originalName}
+                className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+              />
+            )}
+            <div className="absolute bottom-0 left-0 right-0 rounded-b-lg bg-gradient-to-t from-black/80 to-transparent p-4">
+              <p className="text-sm font-medium text-white">{previewAsset.originalName}</p>
+              <p className="text-xs text-white/70">
+                {previewAsset.width && previewAsset.height ? `${previewAsset.width}×${previewAsset.height} · ` : ''}
+                {fmtSize(previewAsset.size)}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

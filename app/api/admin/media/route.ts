@@ -27,7 +27,9 @@ export async function GET(request: Request) {
       { originalName: { contains: search, mode: 'insensitive' } },
       { alt:          { contains: search, mode: 'insensitive' } },
       { title:        { contains: search, mode: 'insensitive' } },
+      { caption:      { contains: search, mode: 'insensitive' } },
       { tags:         { has: search } },
+      { keywords:     { has: search } },
     ];
   }
 

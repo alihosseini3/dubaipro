@@ -20,6 +20,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import type { UploadedAsset } from './SmartMediaUploader';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -56,6 +57,12 @@ export interface MediaPickerDialogProps {
 }
 
 const PAGE_SIZE = 30;
+
+function useGalleryTranslations() {
+  const t = useTranslations('admin.gallery');
+  const tCommon = useTranslations('common');
+  return { t, tCommon };
+}
 
 function toUploadedAsset(a: GalleryAsset): UploadedAsset {
   const masterVariant = a.variants.find((v) => v.preset === 'original' && v.format === 'webp')
@@ -104,8 +111,10 @@ export function MediaPickerDialog({
   const [page,       setPage]       = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
   const [selected,   setSelected]   = useState<Set<string>>(new Set(selectedIds));
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimer = useRef<NodeJS.Timeout | null>(null);
+  const { t, tCommon } = useGalleryTranslations();
 
   /* ── Keyboard ─────────────────────────────────────────────────────────── */
 
@@ -116,7 +125,7 @@ export function MediaPickerDialog({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onClose, selected.size]);
 
   /* ── Fetch folders ─────────────────────────────────────────────────────── */
 
@@ -124,13 +133,14 @@ export function MediaPickerDialog({
     fetch('/api/media?includeFolders=1&limit=1')
       .then((r) => r.ok ? r.json() : null)
       .then((j) => { if (j?.folders) setFolders(j.folders); })
-      .catch(() => {});
+      .catch((err) => { console.error('[MediaPicker] Failed to fetch folders:', err); });
   }, []);
 
   /* ── Fetch assets ──────────────────────────────────────────────────────── */
 
   const fetchAssets = useCallback((f: string, s: string, p: number, append: boolean) => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
     if (f !== 'all') params.set('folder', f);
     if (s.trim())   params.set('q', s.trim());
@@ -141,7 +151,10 @@ export function MediaPickerDialog({
         setAssets((prev) => append ? [...prev, ...(j.data ?? [])] : (j.data ?? []));
         setTotalPages(j.totalPages ?? 1);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[MediaPicker] Failed to fetch assets:', err);
+        setError(t('errorGeneric'));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -206,7 +219,7 @@ export function MediaPickerDialog({
             Choose from Gallery
             {selected.size > 0 && (
               <span className="ms-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
-                {selected.size} selected
+                {t('pickerSelected', { n: selected.size })}
               </span>
             )}
           </h2>
@@ -216,7 +229,7 @@ export function MediaPickerDialog({
             <input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search images…"
+              placeholder={t('searchPlaceholder')}
               className="h-8 w-52 rounded-lg border border-slate-200 bg-slate-50 ps-8 pe-3 text-xs text-slate-700 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
             />
           </div>
@@ -232,7 +245,7 @@ export function MediaPickerDialog({
           {/* Sidebar */}
           <aside className="hidden w-44 flex-shrink-0 overflow-y-auto border-e border-slate-100 bg-slate-50/50 p-2 sm:flex sm:flex-col">
             <FolderItem
-              label="All media"
+              label={t('folderAll')}
               count={folders.reduce((s, f) => s + f.count, 0)}
               active={folder === 'all'}
               onClick={() => setFolder('all')}
@@ -257,7 +270,7 @@ export function MediaPickerDialog({
                 <input
                   value={search}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Search images…"
+                  placeholder={t('searchPlaceholder')}
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white ps-8 pe-3 text-xs outline-none focus:border-indigo-400"
                 />
               </div>
@@ -269,10 +282,17 @@ export function MediaPickerDialog({
               </div>
             )}
 
-            {!loading && assets.length === 0 && (
+            {!loading && error && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-red-500">
+                <ErrorIcon />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && assets.length === 0 && (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slate-400">
                 <EmptyIcon />
-                <p className="text-sm">No images found</p>
+                <p className="text-sm">{t('emptySearchTitle')}</p>
               </div>
             )}
 
@@ -333,7 +353,7 @@ export function MediaPickerDialog({
             {page < totalPages && !loading && (
               <button type="button" onClick={loadMore}
                 className="mx-auto mt-4 rounded-xl border border-slate-300 bg-white px-6 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-900">
-                Load more
+                {tCommon('loadMore')}
               </button>
             )}
             {loading && assets.length > 0 && (
@@ -346,13 +366,13 @@ export function MediaPickerDialog({
         <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3">
           <p className="text-xs text-slate-500">
             {selected.size === 0
-              ? mode === 'single' ? 'Click an image to select' : 'Click images to select'
-              : `${selected.size} image${selected.size > 1 ? 's' : ''} selected`}
+              ? mode === 'single' ? t('pickerClickToSelect') : t('pickerClickToSelect')
+              : t('pickerSelected', { n: selected.size })}
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={onClose}
               className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-900">
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="button"
@@ -360,7 +380,7 @@ export function MediaPickerDialog({
               disabled={selected.size === 0}
               className="rounded-lg bg-indigo-600 px-5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {mode === 'single' ? 'Use Image' : `Use ${selected.size} Image${selected.size !== 1 ? 's' : ''}`}
+              {mode === 'single' ? t('pickerConfirm', { n: 1 }) : t('pickerConfirm', { n: selected.size })}
             </button>
           </div>
         </div>
@@ -431,6 +451,15 @@ function EmptyIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
       strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10" aria-hidden>
       <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3v18" />
+    </svg>
+  );
+}
+function ErrorIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+      strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" />
     </svg>
   );
 }

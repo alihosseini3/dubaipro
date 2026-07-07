@@ -6,6 +6,7 @@ import type { RfqRequestStatus } from '@prisma/client';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { prisma } from '@/lib/prisma';
 import { RfqStatusBadge, RfqUrgencyBadge } from '@/components/rfq/RfqStatusBadge';
+import { RfqModerationActions } from '@/components/admin/RfqModerationActions';
 
 export const metadata: Metadata = { title: 'RFQ Requests | Admin' };
 
@@ -124,12 +125,20 @@ export default async function AdminRfqRequestsPage({
               <tr key={r.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/20">
                 <td className="max-w-[220px] truncate px-4 py-3">
                   <Link
-                    href={`/${locale}/rfq/${r.slug}`}
+                    href={`/${locale}/admin/rfq/requests/${r.slug}`}
                     className="font-semibold text-slate-900 hover:text-orange-600 dark:text-white"
-                    target="_blank"
                   >
                     {r.title}
                   </Link>
+                  <div className="mt-0.5 flex gap-2">
+                    <Link
+                      href={`/${locale}/rfq/${r.slug}`}
+                      target="_blank"
+                      className="text-[10px] text-slate-400 hover:text-orange-600"
+                    >
+                      View Public →
+                    </Link>
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <p className="font-medium text-slate-700 dark:text-slate-200">{r.user.name}</p>
@@ -154,7 +163,7 @@ export default async function AdminRfqRequestsPage({
                   {new Date(r.createdAt).toLocaleDateString()}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <AdminQuickActions rfqId={r.id} locale={locale} />
+                  <RfqModerationActions slug={r.slug} status={r.status} locale={locale} />
                 </td>
               </tr>
             ))}
@@ -184,13 +193,3 @@ export default async function AdminRfqRequestsPage({
   );
 }
 
-function AdminQuickActions({ rfqId, locale }: { rfqId: string; locale: string }) {
-  return (
-    <Link
-      href={`/${locale}/rfq/admin-detail/${rfqId}`}
-      className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-600"
-    >
-      View
-    </Link>
-  );
-}

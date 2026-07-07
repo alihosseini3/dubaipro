@@ -4,6 +4,7 @@ import { badRequest, handlePrismaError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/validation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createRfq, listRfqs } from '@/lib/rfq/service';
+import { rfqCreateLimiter } from '@/lib/rfq/rate-limit';
 import type { CreateRfqInput, RfqListFilters } from '@/lib/rfq/types';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,15 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const parsed = await parseJsonBody<CreateRfqInput>(request);
+  // Anti-spam: cap RFQ creation per user (admins are exempt).
+  if (user.role !== 'ADMIN' && !rfqCreateLimiter.allow(`uid:${user.id}`)) {
+    return NextResponse.json(
+      { error: 'too_many_requests', retryAfter: 360 },
+      { status: 429, headers: { 'Retry-After': '360' } }
+    );
+  }
+
+  const parsed = await parseJsonBody<CreateRfqInput & { whatsapp?: string; email?: string }>(request);
   if (!parsed.ok) return badRequest(parsed.error);
   const body = parsed.data;
 
@@ -50,8 +59,27 @@ export async function POST(request: Request) {
   if (!body.currency?.trim()) return badRequest('currency is required');
   if (!body.shippingCountry?.trim()) return badRequest('shippingCountry is required');
 
+  // Buyer contact — the wizard sends `whatsapp` (required) and `email` (optional).
+  const contactWhatsapp = (body.contactWhatsapp ?? body.whatsapp ?? '').trim();
+  const contactEmail = (body.contactEmail ?? body.email ?? '').trim();
+  const normalizedWhatsapp = contactWhatsapp.replace(/[\s\-().]/g, '');
+  if (!normalizedWhatsapp || !/^\+\d{7,15}$/.test(normalizedWhatsapp)) {
+    return badRequest('a valid WhatsApp number with country code is required');
+  }
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return badRequest('contactEmail is invalid');
+  }
+
   try {
-    const rfq = await createRfq(user.id, body);
+    const rfq = await createRfq(
+      user.id,
+      {
+        ...body,
+        contactWhatsapp: normalizedWhatsapp,
+        contactEmail: contactEmail || undefined,
+      },
+      { isAdmin: user.role === 'ADMIN' }
+    );
     return NextResponse.json({ data: rfq }, { status: 201 });
   } catch (error) {
     return handlePrismaError(error, 'POST /api/rfq/requests');

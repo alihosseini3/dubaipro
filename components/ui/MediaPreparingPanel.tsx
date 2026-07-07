@@ -46,9 +46,13 @@ export function MediaPreparingPanel({
 
   const [mounted, setMounted] = useState(false);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
-  const [alt, setAlt] = useState(() =>
-    file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
-  );
+  /* NOTE: we deliberately do NOT pre-fill alt with the filename. If the
+   * admin leaves alt empty, the server runs AI Vision inline after upload
+   * and fills alt/title/caption/keywords automatically. Pre-filling alt
+   * would suppress that auto-fill. The filename is shown as a placeholder
+   * hint instead. */
+  const filenameHint = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  const [alt, setAlt] = useState('');
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
   const [config, setConfig] = useState<UploadConfig>(() => ({
@@ -90,7 +94,10 @@ export function MediaPreparingPanel({
   const fmtSize = (b: number) =>
     b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 
-  const altOk = alt.trim().length > 0;
+  /* Alt is no longer a hard requirement: when the admin leaves it empty
+   * the server runs AI Vision inline and fills alt / title / caption /
+   * keywords automatically. The label still nudges the admin to provide
+   * their own copy, but Upload is enabled either way. */
 
   if (!mounted) return null;
 
@@ -170,7 +177,7 @@ export function MediaPreparingPanel({
                 autoFocus
                 value={alt}
                 onChange={(e) => setAlt(e.target.value)}
-                placeholder={t('seoAltPlaceholder')}
+                placeholder={filenameHint || (t('seoAltPlaceholder') as string)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
               />
               <p className="mt-0.5 text-[10px] text-slate-400">
@@ -219,7 +226,6 @@ export function MediaPreparingPanel({
           </button>
           <button
             type="button"
-            disabled={!altOk}
             onClick={() =>
               onUpload(
                 { alt: alt.trim(), title: title.trim(), caption: caption.trim() },

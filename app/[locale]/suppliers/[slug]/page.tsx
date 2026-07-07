@@ -38,7 +38,7 @@ export async function generateMetadata({
 }: PageParams): Promise<Metadata> {
   const { locale, slug } = await params;
   const t = await getTranslations({ locale, namespace: 'suppliers' });
-  const supplier = await getPublicSupplierBySlug(slug);
+  const supplier = await getPublicSupplierBySlug(slug, locale);
   if (!supplier) {
     return {
       title: composeTitle(t('notFoundTitle')),
@@ -78,7 +78,7 @@ export async function generateMetadata({
 export default async function SupplierProfilePage({ params }: PageParams) {
   const { locale, slug } = await params;
   const t = await getTranslations({ locale, namespace: 'suppliers' });
-  const supplier = await getPublicSupplierBySlug(slug);
+  const supplier = await getPublicSupplierBySlug(slug, locale);
   if (!supplier) notFound();
 
   const user = await getCurrentUser();

@@ -119,7 +119,7 @@ export default async function AuctionDetailPage({ params }: PageParams) {
   );
 
   const base = `/${locale}`;
-  const loginHref = `${base}/login?redirect=${encodeURIComponent(`/auctions/${slug}`)}`;
+  const loginHref = `${base}/login?from=${encodeURIComponent(`/${locale}/auctions/${slug}`)}`;
   const url = buildLocaleUrl(locale, `/auctions/${slug}`);
 
   /* Build gallery: hero image + extra images. */

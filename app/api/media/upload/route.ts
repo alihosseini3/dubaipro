@@ -34,6 +34,8 @@ import { uploadLimiter } from '@/lib/media/rate-limit';
 import { emitMediaEvent, startTimer } from '@/lib/observability/media-events';
 import { getAdminOrNull } from '@/lib/auth/require-admin';
 import { getMediaSettings } from '@/lib/media/settings';
+import { generateImageMeta } from '@/lib/media/ai-vision';
+import { computeMediaScore } from '@/lib/media/score';
 import { prisma } from '@/lib/prisma';
 import {
   isMediaContext,
@@ -221,8 +223,12 @@ export async function POST(request: Request) {
       score:     result.optimizationScore ?? undefined,
     });
 
-    /* Auto-schedule AI meta generation if setting is enabled and image lacks alt text */
+    /* Auto-fill SEO via AI Vision if enabled and image lacks alt text.
+     * Run inline so the asset is saved with title/alt/caption/keywords immediately,
+     * which works on local dev where the cron worker is not running. On failure
+     * we fall back to scheduling a background job so a worker run can retry. */
     const settings = await getMediaSettings();
+    let aiMeta: { alt?: string; title?: string; caption?: string; keywords?: string[]; tags?: string[] } | null = null;
     if (
       settings.ai.enabled &&
       settings.ai.autoGenerate &&
@@ -230,23 +236,136 @@ export async function POST(request: Request) {
       !result.duplicate &&
       !seo.alt
     ) {
-      await prisma.mediaTransformJob.upsert({
-        where: { id: `${result.id}-ai_meta` },
-        create: {
-          id:          `${result.id}-ai_meta`,
-          assetId:     result.id,
-          action:      'ai_meta',
-          status:      'pending',
-          priority:    1,
-          params:      { force: false },
-          scheduledAt: new Date(),
-        },
-        update: {},
-      }).catch(() => { /* non-fatal: AI job scheduling failure should not break upload */ });
+      try {
+        /* Resolve product/entity context for richer prompts (best-effort) */
+        let productName: string | null = null;
+        let productDescription: string | null = null;
+        let categoryName: string | null = null;
+        let brandName: string | null = null;
+        if (entityType === 'product' && entityId) {
+          try {
+            const product = await prisma.product.findUnique({
+              where:  { id: entityId },
+              select: { title: true, description: true, category: { select: { name: true } }, brand: { select: { name: true } } },
+            });
+            if (product) {
+              productName        = product.title;
+              productDescription = product.description?.slice(0, 400) ?? null;
+              categoryName       = product.category?.name ?? null;
+              brandName          = product.brand?.name ?? null;
+            }
+          } catch { /* non-fatal */ }
+        }
+
+        const vision = await generateImageMeta(
+          { buffer, mimeType },
+          {
+            context: context ?? null,
+            folder:  folder ?? null,
+            filename: file.name || 'image',
+            productName, productDescription, categoryName, brandName,
+          },
+        );
+
+        if (vision) {
+          /* Match AssetDetailPanel's manual AI flow exactly:
+           *   - normalise each keyword to trim + lowercase (keep spaces)
+           *   - save into BOTH `keywords` (SEO signal) and `tags`
+           *     (merged with whatever the admin already provided). */
+          const normalisedKeywords = (vision.keywords ?? [])
+            .map((k) => k.trim().toLowerCase())
+            .filter(Boolean);
+
+          // Debug: Log what AI generated vs what will be saved
+          console.log('[upload] AI Vision result:', {
+            alt: vision.alt,
+            title: vision.title,
+            caption: vision.caption,
+            keywords: vision.keywords,
+            confidence: vision.confidence,
+          });
+
+          const data: Record<string, unknown> = {};
+          if (vision.alt?.trim())              data.alt      = vision.alt.trim();
+          if (vision.title?.trim())            data.title    = vision.title.trim();
+          if (vision.caption?.trim())          data.caption  = vision.caption.trim();
+          if (normalisedKeywords.length) {
+            data.keywords = normalisedKeywords;
+
+            /* Merge with admin-provided tags (de-duped, preserving order). */
+            const merged = [...(tags ?? [])];
+            const seen   = new Set(merged.map((t) => t.toLowerCase()));
+            for (const kw of normalisedKeywords) {
+              if (!seen.has(kw)) { seen.add(kw); merged.push(kw); }
+            }
+            data.tags = merged;
+          }
+          if (Object.keys(data).length > 0) {
+            console.log('[upload] Saving AI metadata to DB:', Object.keys(data));
+            try {
+              /* Re-compute score with AI-provided alt + keywords so it
+               * reflects the real state — pipeline runs before AI. */
+              const updatedScore = computeMediaScore({
+                alt:            data.alt as string | undefined,
+                keywords:       (data.keywords as string[] | undefined) ?? [],
+                mimeType:       result.mimeType,
+                size:           result.size,
+                width:          result.width,
+                height:         result.height,
+                variantCount:   result.variants?.length ?? 0,
+                hasWebpVariant: result.variants?.some((v) => v.format === 'webp' || v.format === 'avif') ?? false,
+              });
+              data.optimizationScore = updatedScore.total;
+
+              await prisma.mediaAsset.update({ where: { id: result.id }, data });
+              result.optimizationScore = updatedScore.total;
+              console.log('[upload] AI metadata + score saved successfully. New score:', updatedScore.total);
+            } catch (err) {
+              console.error('[upload] Failed to save AI metadata:', err);
+              // Non-fatal: upload succeeded even if AI meta save failed
+            }
+          }
+          aiMeta = {
+            alt:      data.alt as string | undefined,
+            title:    data.title as string | undefined,
+            caption:  data.caption as string | undefined,
+            keywords: data.keywords as string[] | undefined,
+            tags:     data.tags as string[] | undefined,
+          };
+          emitMediaEvent({
+            event:   'ai_alt_generated',
+            assetId: result.id,
+            userId:  admin.id,
+            meta:    { provider: vision.provider, confidence: vision.confidence, inline: true },
+          });
+        } else {
+          throw new Error('AI Vision returned no result');
+        }
+      } catch (err) {
+        /* Fallback: schedule a background job so the worker can retry. */
+        console.warn('[upload] inline AI meta failed, scheduling job:', err instanceof Error ? err.message : err);
+        try {
+          await prisma.mediaTransformJob.upsert({
+            where: { id: `${result.id}-ai_meta` },
+            create: {
+              id:          `${result.id}-ai_meta`,
+              assetId:     result.id,
+              action:      'ai_meta',
+              status:      'pending',
+              priority:    1,
+              params:      { force: false },
+              scheduledAt: new Date(),
+            },
+            update: {},
+          });
+        } catch (jobErr) {
+          console.error('[upload] Failed to schedule AI meta job:', jobErr);
+        }
+      }
     }
 
     return NextResponse.json(
-      { data: result },
+      { data: result, ai: aiMeta },
       { status: result.duplicate ? 200 : 201 },
     );
   } catch (error) {

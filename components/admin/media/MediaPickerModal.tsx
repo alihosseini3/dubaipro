@@ -63,9 +63,12 @@ export function MediaPickerModal({ mode = 'single', onPick, onClose }: MediaPick
     const f = opts?.folder ?? folder;
     const s = opts?.search ?? search;
     const p = opts?.page   ?? page;
-    const params = new URLSearchParams({ folder: f, search: s, sort: 'newest', page: String(p), limit: String(PAGE) });
+    /* Unified on /api/media (same endpoint the main gallery uses). */
+    const params = new URLSearchParams({ sort: 'createdAt', dir: 'desc', page: String(p), limit: String(PAGE) });
+    if (f && f !== 'all') params.set('folder', f);
+    if (s.trim())         params.set('q', s.trim());
     try {
-      const res  = await fetch(`/api/admin/media?${params}`);
+      const res  = await fetch(`/api/media?${params}`);
       const json = await res.json();
       setAssets(json.data ?? []);
       setTotal(json.total ?? 0);

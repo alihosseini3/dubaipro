@@ -31,14 +31,38 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const parsed = await parseJsonBody<UpdateRfqInput>(request);
+  const parsed = await parseJsonBody<UpdateRfqInput & { whatsapp?: string; email?: string; attachmentIds?: string[]; attachmentsModified?: boolean }>(request);
   if (!parsed.ok) return badRequest(parsed.error);
+  const body = parsed.data;
+
+  // Map the wizard's contact fields (whatsapp/email) onto the stored
+  // columns, with the same validation as creation.
+  const { whatsapp, email, attachmentIds, attachmentsModified, ...rest } = body;
+  const update: UpdateRfqInput & { attachmentIds?: string[]; attachmentsModified?: boolean } = { ...rest };
+  if (whatsapp !== undefined) {
+    const normalized = whatsapp.trim().replace(/[\s\-().]/g, '');
+    if (!/^\+\d{7,15}$/.test(normalized)) {
+      return badRequest('a valid WhatsApp number with country code is required');
+    }
+    update.contactWhatsapp = normalized;
+  }
+  if (email !== undefined) {
+    const trimmed = email.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return badRequest('contactEmail is invalid');
+    }
+    update.contactEmail = trimmed || undefined;
+  }
+  if (attachmentIds !== undefined) {
+    update.attachmentIds = attachmentIds;
+    update.attachmentsModified = attachmentsModified;
+  }
 
   try {
     const existing = await getRfqBySlug(slug, user.id, user.role === 'ADMIN');
     if (!existing) return notFound('RFQ not found');
 
-    const updated = await updateRfq(existing.id, user.id, parsed.data, user.role === 'ADMIN');
+    const updated = await updateRfq(existing.id, user.id, update, user.role === 'ADMIN');
     if (!updated) return notFound('RFQ not found or forbidden');
     return NextResponse.json({ data: updated });
   } catch (error) {

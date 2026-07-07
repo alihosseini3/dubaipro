@@ -26,10 +26,11 @@ import { translateMany } from './translate';
 export async function localizeArray<T extends Record<string, unknown>>(
   rows: T[],
   locale: string,
-  fields: ReadonlyArray<keyof T>
+  fields: ReadonlyArray<keyof T>,
+  sourceLocale: string = 'en'
 ): Promise<T[]> {
   if (!rows || rows.length === 0) return rows;
-  if (!locale || locale.toLowerCase() === 'en') return rows;
+  if (!locale || locale.toLowerCase() === sourceLocale.toLowerCase()) return rows;
   if (fields.length === 0) return rows;
 
   // Collect every translatable string with a back-reference so we can
@@ -53,7 +54,7 @@ export async function localizeArray<T extends Record<string, unknown>>(
   }
   if (slots.length === 0) return rows;
 
-  const translated = await translateMany(sources, locale);
+  const translated = await translateMany(sources, locale, sourceLocale);
 
   // Clone at the row level so callers that hold the original reference
   // (e.g. a `react.cache()` value) aren't mutated.
@@ -71,8 +72,9 @@ export async function localizeArray<T extends Record<string, unknown>>(
 export async function localizeRecord<T extends Record<string, unknown>>(
   row: T,
   locale: string,
-  fields: ReadonlyArray<keyof T>
+  fields: ReadonlyArray<keyof T>,
+  sourceLocale: string = 'en'
 ): Promise<T> {
-  const [out] = await localizeArray([row], locale, fields);
+  const [out] = await localizeArray([row], locale, fields, sourceLocale);
   return out;
 }

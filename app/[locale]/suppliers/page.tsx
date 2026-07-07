@@ -78,7 +78,7 @@ export default async function SuppliersIndexPage({
   const filters = parseSupplierListQuery(sp);
 
   const [{ data, meta }, countries] = await Promise.all([
-    listPublicSuppliers(filters),
+    listPublicSuppliers(filters, locale),
     listActiveCountries()
   ]);
 

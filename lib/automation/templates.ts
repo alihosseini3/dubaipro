@@ -315,6 +315,227 @@ const T: Record<Key, TemplateSeed> = {
   'DISCOUNT_OFFER:WHATSAPP:fa': {
     body: 'سلام {name}، کد تخفیف اختصاصی شما: {discountCode} — همین الان خرید کنید: {link}'
   },
+
+  // ---- RFQ_REQUEST_CREATED (Buyer confirmation) --------------------------------
+  'RFQ_REQUEST_CREATED:EMAIL:en': {
+    subject: 'RFQ submitted — {title}',
+    body: `<p>Hi {name},</p>
+<p>Your sourcing request "<strong>{title}</strong>" has been submitted successfully.</p>
+<p>Quantity: {quantity} {unit}<br/>Destination: {destination}</p>
+<p><a href="{link}">View RFQ</a></p>`
+  },
+  'RFQ_REQUEST_CREATED:EMAIL:fa': {
+    subject: 'درخواست قیمت ثبت شد — {title}',
+    body: `<p>سلام {name}،</p>
+<p>درخواست تامین "<strong>{title}</strong>" با موفقیت ثبت شد.</p>
+<p>تعداد: {quantity} {unit}<br/>مقصد: {destination}</p>
+<p><a href="{link}">مشاهده درخواست</a></p>`
+  },
+  'RFQ_REQUEST_CREATED:EMAIL:ar': {
+    subject: 'تم تقديم طلب السعر — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>تم تقديم طلب التوريد "<strong>{title}</strong>" بنجاح.</p>
+<p>الكمية: {quantity} {unit}<br/>الوجهة: {destination}</p>
+<p><a href="{link}">عرض طلب السعر</a></p>`
+  },
+  'RFQ_REQUEST_CREATED:WHATSAPP:en': {
+    body: 'Hi {name}, your RFQ "{title}" has been submitted. View: {link}'
+  },
+  'RFQ_REQUEST_CREATED:WHATSAPP:fa': {
+    body: 'سلام {name}، درخواست قیمت "{title}" ثبت شد. مشاهده: {link}'
+  },
+  'RFQ_REQUEST_CREATED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، تم تقديم طلب السعر "{title}". عرض: {link}'
+  },
+
+  // ---- RFQ_PUBLISHED (Notifies invited suppliers) ------------------------------
+  'RFQ_PUBLISHED:EMAIL:en': {
+    subject: 'New RFQ — {title}',
+    body: `<p>Hi {name},</p>
+<p>A new sourcing request matches your products: "<strong>{title}</strong>"</p>
+<p>Quantity: {quantity} {unit}<br/>Destination: {destination}</p>
+<p><a href="{link}">Submit Quote</a></p>`
+  },
+  'RFQ_PUBLISHED:EMAIL:fa': {
+    subject: 'درخواست قیمت جدید — {title}',
+    body: `<p>سلام {name}،</p>
+<p>یک درخواست تامین جدید با محصولات شما مطابقت دارد: "<strong>{title}</strong>"</p>
+<p>تعداد: {quantity} {unit}<br/>مقصد: {destination}</p>
+<p><a href="{link}">ارسال پیشنهاد</a></p>`
+  },
+  'RFQ_PUBLISHED:EMAIL:ar': {
+    subject: 'طلب سعر جديد — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>طلب توريد جديد يطابق منتجاتك: "<strong>{title}</strong>"</p>
+<p>الكمية: {quantity} {unit}<br/>الوجهة: {destination}</p>
+<p><a href="{link}">تقديم عرض</a></p>`
+  },
+  'RFQ_PUBLISHED:WHATSAPP:en': {
+    body: 'Hi {name}, new RFQ "{title}" — {quantity} {unit} to {destination}. Submit quote: {link}'
+  },
+  'RFQ_PUBLISHED:WHATSAPP:fa': {
+    body: 'سلام {name}، درخواست قیمت جدید "{title}" — {quantity} {unit} به {destination}. ارسال پیشنهاد: {link}'
+  },
+  'RFQ_PUBLISHED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، طلب سعر جديد "{title}" — {quantity} {unit} إلى {destination}. تقديم عرض: {link}'
+  },
+
+  // ---- RFQ_EXPIRED (Buyer notification) -----------------------------------------
+  'RFQ_EXPIRED:EMAIL:en': {
+    subject: 'RFQ expired — {title}',
+    body: `<p>Hi {name},</p>
+<p>Your sourcing request "<strong>{title}</strong>" has expired. You can extend it or create a new one.</p>
+<p><a href="{link}">View RFQ</a></p>`
+  },
+  'RFQ_EXPIRED:EMAIL:fa': {
+    subject: 'درخواست قیمت منقضی شد — {title}',
+    body: `<p>سلام {name}،</p>
+<p>درخواست تامین "<strong>{title}</strong>" منقضی شده است. می‌توانید آن را تمدید یا درخواست جدید ایجاد کنید.</p>
+<p><a href="{link}">مشاهده درخواست</a></p>`
+  },
+  'RFQ_EXPIRED:EMAIL:ar': {
+    subject: 'انتهت صلاحية طلب السعر — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>انتهت صلاحية طلب التوريد "<strong>{title}</strong>". يمكنك تمديده أو إنشاء طلب جديد.</p>
+<p><a href="{link}">عرض طلب السعر</a></p>`
+  },
+  'RFQ_EXPIRED:WHATSAPP:en': {
+    body: 'Hi {name}, your RFQ "{title}" has expired. View or extend: {link}'
+  },
+  'RFQ_EXPIRED:WHATSAPP:fa': {
+    body: 'سلام {name}، درخواست قیمت "{title}" منقضی شده است. مشاهده یا تمدید: {link}'
+  },
+  'RFQ_EXPIRED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، انتهت صلاحية طلب السعر "{title}". عرض أو تمديد: {link}'
+  },
+
+  // ---- RFQ_QUOTE_RECEIVED (Buyer notification) ---------------------------------
+  'RFQ_QUOTE_RECEIVED:EMAIL:en': {
+    subject: 'New quote received — {title}',
+    body: `<p>Hi {name},</p>
+<p>You received a new quote for "<strong>{title}</strong>" from {supplierName}.</p>
+<p>Price: {price} {currency}<br/>Delivery: {deliveryDays} days</p>
+<p><a href="{link}">View Quote</a></p>`
+  },
+  'RFQ_QUOTE_RECEIVED:EMAIL:fa': {
+    subject: 'پیشنهاد جدید دریافت شد — {title}',
+    body: `<p>سلام {name}،</p>
+<p>یک پیشنهاد جدید برای "<strong>{title}</strong>" از {supplierName} دریافت کردید.</p>
+<p>قیمت: {price} {currency}<br/>تحویل: {deliveryDays} روز</p>
+<p><a href="{link}">مشاهده پیشنهاد</a></p>`
+  },
+  'RFQ_QUOTE_RECEIVED:EMAIL:ar': {
+    subject: 'تم استلام عرض جديد — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>لقد تلقيت عرضًا جديدًا لـ "<strong>{title}</strong>" من {supplierName}.</p>
+<p>السعر: {price} {currency}<br/>التوصيل: {deliveryDays} يومًا</p>
+<p><a href="{link}">عرض العرض</a></p>`
+  },
+  'RFQ_QUOTE_RECEIVED:WHATSAPP:en': {
+    body: 'Hi {name}, new quote for "{title}" from {supplierName}: {price} {currency}. View: {link}'
+  },
+  'RFQ_QUOTE_RECEIVED:WHATSAPP:fa': {
+    body: 'سلام {name}، پیشنهاد جدید برای "{title}" از {supplierName}: {price} {currency}. مشاهده: {link}'
+  },
+  'RFQ_QUOTE_RECEIVED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، عرض جديد لـ "{title}" من {supplierName}: {price} {currency}. عرض: {link}'
+  },
+
+  // ---- RFQ_QUOTE_ACCEPTED (Supplier notification) ------------------------------
+  'RFQ_QUOTE_ACCEPTED:EMAIL:en': {
+    subject: 'Quote accepted — {title}',
+    body: `<p>Hi {name},</p>
+<p>Congratulations! Your quote for "<strong>{title}</strong>" has been accepted by the buyer.</p>
+<p>Accepted price: {price} {currency}</p>
+<p><a href="{link}">View RFQ</a></p>`
+  },
+  'RFQ_QUOTE_ACCEPTED:EMAIL:fa': {
+    subject: 'پیشنهاد پذیرفته شد — {title}',
+    body: `<p>سلام {name}،</p>
+<p>تبریک! پیشنهاد شما برای "<strong>{title}</strong>" توسط خریدار پذیرفته شد.</p>
+<p>قیمت پذیرفته شده: {price} {currency}</p>
+<p><a href="{link}">مشاهده درخواست</a></p>`
+  },
+  'RFQ_QUOTE_ACCEPTED:EMAIL:ar': {
+    subject: 'تم قبول العرض — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>تهانينا! تم قبول عرضك لـ "<strong>{title}</strong>" من قبل المشتري.</p>
+<p>السعر المقبول: {price} {currency}</p>
+<p><a href="{link}">عرض طلب السعر</a></p>`
+  },
+  'RFQ_QUOTE_ACCEPTED:WHATSAPP:en': {
+    body: 'Hi {name}, your quote for "{title}" was accepted! Price: {price} {currency}. View: {link}'
+  },
+  'RFQ_QUOTE_ACCEPTED:WHATSAPP:fa': {
+    body: 'سلام {name}، پیشنهاد شما برای "{title}" پذیرفته شد! قیمت: {price} {currency}. مشاهده: {link}'
+  },
+  'RFQ_QUOTE_ACCEPTED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، تم قبول عرضك لـ "{title}"! السعر: {price} {currency}. عرض: {link}'
+  },
+
+  // ---- RFQ_STALE (Supplier notification about material change) ------------------
+  'RFQ_STALE:EMAIL:en': {
+    subject: 'RFQ updated — reconfirmation needed for {title}',
+    body: `<p>Hi {name},</p>
+<p>The buyer updated "<strong>{title}</strong>". Changes: {changedFields}.</p>
+<p>Your previous quote has been flagged. Please review and reconfirm or revise.</p>
+<p><a href="{link}">Review RFQ</a></p>`
+  },
+  'RFQ_STALE:EMAIL:fa': {
+    subject: 'درخواست قیمت به‌روزرسانی شد — نیاز به تایید مجدد برای {title}',
+    body: `<p>سلام {name}،</p>
+<p>خریدار "<strong>{title}</strong>" را به‌روزرسانی کرده است. تغییرات: {changedFields}.</p>
+<p>پیشنهاد قبلی شما نیاز به بررسی مجدد دارد. لطفاً آن را بررسی و تایید یا اصلاح کنید.</p>
+<p><a href="{link}">بررسی درخواست</a></p>`
+  },
+  'RFQ_STALE:EMAIL:ar': {
+    subject: 'تم تحديث طلب السعر — مطلوب إعادة التأكيد لـ {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>قام المشتري بتحديث "<strong>{title}</strong>". التغييرات: {changedFields}.</p>
+<p>عرضك السابق بحاجة لإعادة المراجعة. يرجى المراجعة وإعادة التأكيد أو التعديل.</p>
+<p><a href="{link}">مراجعة طلب السعر</a></p>`
+  },
+  'RFQ_STALE:WHATSAPP:en': {
+    body: 'Hi {name}, RFQ "{title}" updated ({changedFields}). Please reconfirm your quote: {link}'
+  },
+  'RFQ_STALE:WHATSAPP:fa': {
+    body: 'سلام {name}، درخواست قیمت "{title}" به‌روزرسانی شد ({changedFields}). لطفاً پیشنهاد خود را مجدداً تایید کنید: {link}'
+  },
+  'RFQ_STALE:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، تم تحديث طلب السعر "{title}" ({changedFields}). يرجى إعادة تأكيد عرضك: {link}'
+  },
+
+  // ---- RFQ_SUPPLIER_INVITED (Invite notification) ------------------------------
+  'RFQ_SUPPLIER_INVITED:EMAIL:en': {
+    subject: 'Invitation to quote — {title}',
+    body: `<p>Hi {name},</p>
+<p>You've been invited to submit a quote for "<strong>{title}</strong>".</p>
+<p>Quantity: {quantity} {unit}<br/>Destination: {destination}</p>
+<p><a href="{link}">View RFQ & Submit Quote</a></p>`
+  },
+  'RFQ_SUPPLIER_INVITED:EMAIL:fa': {
+    subject: 'دعوت به ارسال پیشنهاد — {title}',
+    body: `<p>سلام {name}،</p>
+<p>شما برای ارسال پیشنهاد برای "<strong>{title}</strong>" دعوت شده‌اید.</p>
+<p>تعداد: {quantity} {unit}<br/>مقصد: {destination}</p>
+<p><a href="{link}">مشاهده درخواست و ارسال پیشنهاد</a></p>`
+  },
+  'RFQ_SUPPLIER_INVITED:EMAIL:ar': {
+    subject: 'دعوة لتقديم عرض — {title}',
+    body: `<p>مرحبًا {name}،</p>
+<p>لقد تمت دعوتك لتقديم عرض لـ "<strong>{title}</strong>".</p>
+<p>الكمية: {quantity} {unit}<br/>الوجهة: {destination}</p>
+<p><a href="{link}">عرض طلب السعر وتقديم عرض</a></p>`
+  },
+  'RFQ_SUPPLIER_INVITED:WHATSAPP:en': {
+    body: 'Hi {name}, you are invited to quote on "{title}" ({quantity} {unit}). Submit: {link}'
+  },
+  'RFQ_SUPPLIER_INVITED:WHATSAPP:fa': {
+    body: 'سلام {name}، شما برای ارسال پیشنهاد برای "{title}" ({quantity} {unit}) دعوت شده‌اید. ارسال: {link}'
+  },
+  'RFQ_SUPPLIER_INVITED:WHATSAPP:ar': {
+    body: 'مرحبًا {name}، لقد تمت دعوتك لتقديم عرض لـ "{title}" ({quantity} {unit}). تقديم: {link}'
+  },
 };
 
 /**

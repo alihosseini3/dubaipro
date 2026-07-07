@@ -257,8 +257,9 @@ async function openaiVision(
           { type: 'text', text: prompt },
         ],
       }],
-      max_tokens: 600,
+      max_tokens: 900,
       temperature: 0.3,
+      response_format: { type: 'json_object' },
     }),
   });
   if (!res.ok) {
@@ -332,7 +333,7 @@ async function claudeVision(base64: string, mimeType: string, prompt: string, ap
     signal:  AbortSignal.timeout(timeoutMs),
     body: JSON.stringify({
       model,
-      max_tokens: 600,
+      max_tokens: 900,
       messages: [{
         role: 'user',
         content: [
@@ -353,37 +354,102 @@ async function claudeVision(base64: string, mimeType: string, prompt: string, ap
   return parseVisionJson(text, 'claude');
 }
 
-/* ── JSON parser ── */
+/* ── JSON parser ──
+ * Robust: tolerates markdown fences, leading/trailing prose, and truncated
+ * responses (closes unbalanced braces / quotes / arrays as a last resort).
+ * Never falls back to dumping raw text as `alt` — returning null is safer
+ * than persisting a broken JSON blob into a user-facing field. */
 function parseVisionJson(raw: string, provider: string): VisionResult | null {
+  const candidate = extractJsonObject(raw);
+  if (!candidate) return null;
+
+  let parsed: {
+    alt?: string; title?: string; caption?: string;
+    keywords?: string[]; objects?: string[];
+    confidence?: string;
+  } | null = null;
+
   try {
-    /* Strip markdown code fences if the model wrapped it */
-    const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-    const parsed = JSON.parse(cleaned) as {
-      alt?: string; title?: string; caption?: string;
-      keywords?: string[]; objects?: string[];
-      confidence?: string;
-    };
-    if (typeof parsed.alt !== 'string' || !parsed.alt.trim()) return null;
-    const conf = parsed.confidence === 'medium' ? 'medium'
-               : parsed.confidence === 'low'    ? 'low'
-               : 'high';
-    return {
-      alt:        parsed.alt.slice(0, 125),
-      title:      typeof parsed.title   === 'string' ? parsed.title.slice(0, 60)   : undefined,
-      caption:    typeof parsed.caption === 'string' ? parsed.caption.slice(0, 500) : undefined,
-      keywords:   Array.isArray(parsed.keywords)
-        ? (parsed.keywords as unknown[]).filter((k): k is string => typeof k === 'string').slice(0, 10)
-        : undefined,
-      objects:    Array.isArray(parsed.objects)
-        ? (parsed.objects as unknown[]).filter((o): o is string => typeof o === 'string').slice(0, 12)
-        : undefined,
-      confidence: conf,
-      provider,
-    };
+    parsed = JSON.parse(candidate);
   } catch {
-    /* If the model returned free-text, treat it as the alt */
-    const text = raw.trim().slice(0, 200);
-    if (text.length < 5) return null;
-    return { alt: text, confidence: 'low', provider };
+    /* Try once more with a "repaired" version (truncated stream → close braces) */
+    try { parsed = JSON.parse(repairJson(candidate)); } catch { parsed = null; }
   }
+  if (!parsed) return null;
+
+  if (typeof parsed.alt !== 'string' || !parsed.alt.trim()) return null;
+
+  const conf = parsed.confidence === 'medium' ? 'medium'
+             : parsed.confidence === 'low'    ? 'low'
+             : 'high';
+  return {
+    alt:        parsed.alt.slice(0, 125),
+    title:      typeof parsed.title   === 'string' ? parsed.title.slice(0, 60)   : undefined,
+    caption:    typeof parsed.caption === 'string' ? parsed.caption.slice(0, 500) : undefined,
+    keywords:   Array.isArray(parsed.keywords)
+      ? (parsed.keywords as unknown[]).filter((k): k is string => typeof k === 'string').slice(0, 10)
+      : undefined,
+    objects:    Array.isArray(parsed.objects)
+      ? (parsed.objects as unknown[]).filter((o): o is string => typeof o === 'string').slice(0, 12)
+      : undefined,
+    confidence: conf,
+    provider,
+  };
+}
+
+/** Extract the first balanced JSON object substring (handles strings & escapes). */
+function extractJsonObject(raw: string): string | null {
+  if (!raw) return null;
+  /* Strip markdown fences anywhere (not just edges). */
+  const stripped = raw.replace(/```(?:json)?/gi, '').trim();
+  const start = stripped.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let end = -1;
+
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"')  { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+
+  if (end !== -1) return stripped.slice(start, end + 1);
+  /* Unterminated — return the rest so repairJson can try to close it. */
+  return stripped.slice(start);
+}
+
+/** Best-effort: close an unterminated string + remaining braces / brackets. */
+function repairJson(s: string): string {
+  let out = s;
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+  for (let i = 0; i < out.length; i++) {
+    const ch = out[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"')  { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' && stack[stack.length - 1] === '{') stack.pop();
+    else if (ch === ']' && stack[stack.length - 1] === '[') stack.pop();
+  }
+  if (inString) out += '"';
+  /* Drop dangling trailing comma before closing */
+  out = out.replace(/,\s*$/, '');
+  while (stack.length) {
+    const open = stack.pop();
+    out += open === '{' ? '}' : ']';
+  }
+  return out;
 }

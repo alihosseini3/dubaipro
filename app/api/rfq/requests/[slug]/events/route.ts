@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth/session';
+import { canViewRfq } from '@/lib/rfq/access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +25,29 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+
+  // ── Authorization gate ──────────────────────────────────────────────
+  // Mirror the detail page's visibility rules so this stream can never
+  // leak status / quote / message signals for an RFQ the viewer cannot
+  // otherwise see (e.g. PRIVATE requests). No viewCount side effect here.
+  const user = await getCurrentUser();
+  const rfqAccess = await prisma.rfqRequest.findUnique({
+    where: { slug },
+    select: { visibility: true, userId: true },
+  });
+  if (!rfqAccess) {
+    return new Response(JSON.stringify({ error: 'not_found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (!canViewRfq(rfqAccess, user?.id, user?.role === 'ADMIN')) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const enc = new TextEncoder();
 
   const send = (ctrl: ReadableStreamDefaultController, data: object) => {
@@ -38,10 +63,9 @@ export async function GET(
       let lastMsgId: string | null = null;
       let lastStatus: string | null = null;
       let lastQuoteCount = -1;
-      let heartbeatTimer: ReturnType<typeof setInterval>;
 
       // Heartbeat to prevent proxy/CDN timeout
-      heartbeatTimer = setInterval(() => {
+      const heartbeatTimer = setInterval(() => {
         send(ctrl, { type: 'heartbeat' });
       }, HEARTBEAT_MS);
 

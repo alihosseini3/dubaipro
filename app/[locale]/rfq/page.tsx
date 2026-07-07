@@ -90,7 +90,7 @@ export default async function RfqListPage({
               {/* CTA row */}
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
-                  href={user ? `/${locale}/rfq/create` : `/${locale}/login?next=/${locale}/rfq/create`}
+                  href={user ? `/${locale}/rfq/create` : `/${locale}/login?from=/${locale}/rfq/create`}
                   className="inline-flex h-12 items-center gap-2 rounded-xl bg-orange-500 px-6 text-sm font-bold text-white shadow-[0_8px_30px_rgba(249,115,22,0.45)] transition hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-[0_12px_36px_rgba(249,115,22,0.5)]"
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>

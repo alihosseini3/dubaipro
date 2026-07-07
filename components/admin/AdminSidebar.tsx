@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 
 type NavKey =
   | 'dashboard' | 'analytics'
-  | 'products' | 'categories' | 'suppliers' | 'orders' | 'rfqs' | 'rfqMarket'
+  | 'products' | 'categories' | 'suppliers' | 'supplierApplications' | 'orders' | 'rfqs' | 'rfqMarket'
   | 'shipping' | 'payments' | 'coupons' | 'currency'
   | 'users' | 'reviews' | 'messages' | 'chat' | 'customers' | 'affiliate'
   | 'marketing' | 'automation' | 'experiments'
@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: 'products',   href: '/admin/products',   icon: ico('M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7') },
       { key: 'categories', href: '/admin/categories', icon: ico('M4 6h16M4 12h16M4 18h10') },
       { key: 'suppliers',  href: '/admin/suppliers',  icon: ico('M3 21V9l9-6 9 6v12H3zm6 0v-6h6v6') },
+      { key: 'supplierApplications', href: '/admin/supplier-applications', icon: ico('M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z') },
       { key: 'orders',     href: '/admin/orders',     icon: ico('M6 2l2 4h8l2-4M4 6h16v14H4zM9 10v6m6-6v6') },
       { key: 'rfqs',       href: '/admin/rfq',          icon: ico('M4 5h16v12H7l-3 3V5z') },
       { key: 'rfqMarket', href: '/admin/rfq/requests', icon: ico('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01') },

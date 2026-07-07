@@ -111,7 +111,7 @@ export default async function SupplierRfqInbox({
   ];
 
   return (
-    <div className="-mx-4 -my-10 md:-mx-6 lg:-mx-8">
+    <div className="-m-4 sm:-m-6 lg:-m-8">
       {/* Hero band */}
       <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
         <div aria-hidden className="pointer-events-none absolute -top-24 -end-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />

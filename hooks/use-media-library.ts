@@ -335,11 +335,22 @@ export function useMediaLibrary() {
     else void fetchPage({ page: 1, replace: true });
   };
 
-  const renameFolder = async (name: string, label: string): Promise<void> => {
+  const renameFolder = async (name: string, label: string, newName?: string): Promise<void> => {
+    const body: { label: string; newName?: string } = { label };
+    if (newName && newName.trim()) {
+      /* Sanitize to kebab-case (same logic as server) */
+      const sanitized = newName.trim().toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60);
+      if (sanitized && sanitized !== name) body.newName = sanitized;
+    }
     await fetch(`/api/admin/media/folders/${encodeURIComponent(name)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label }),
+      body: JSON.stringify(body),
     });
     await loadAllFolders();
     void fetchPage({ page: 1, replace: true });

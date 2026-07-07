@@ -557,7 +557,7 @@ function SeoDrawer({ asset, onClose }: { asset: UploadedAsset; onClose: () => vo
   useEffect(() => {
     let alive = true;
     setStatus('loading');
-    fetch(`/api/admin/media/${asset.id}`)
+    fetch(`/api/media/${asset.id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (!alive) return;
@@ -579,7 +579,7 @@ function SeoDrawer({ asset, onClose }: { asset: UploadedAsset; onClose: () => vo
   const save = async () => {
     setStatus('saving');
     try {
-      const res = await fetch(`/api/admin/media/${asset.id}`, {
+      const res = await fetch(`/api/media/${asset.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(seo),

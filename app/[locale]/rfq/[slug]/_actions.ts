@@ -6,6 +6,10 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
 import { acceptQuote, rejectQuote, withdrawQuote } from '@/lib/rfq/quotes';
 import { sendRfqMessage } from '@/lib/rfq/messages';
+import { canAccessRfqThread } from '@/lib/rfq/access';
+
+/** Max characters allowed in a single negotiation message. */
+const MAX_MESSAGE_LENGTH = 5000;
 
 export async function acceptQuoteAction(
   quoteId: string,
@@ -60,8 +64,17 @@ export async function sendMessageAction(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'unauthorized' };
 
+  const trimmed = content?.trim() ?? '';
+  if (!trimmed) return { ok: false, error: 'empty_content' };
+  if (trimmed.length > MAX_MESSAGE_LENGTH) return { ok: false, error: 'content_too_long' };
+
+  // Authorization: only the buyer, an admin, or a supplier with a quote
+  // on this RFQ may post into its negotiation threads.
+  const allowed = await canAccessRfqThread(rfqId, user.id, user.role === 'ADMIN');
+  if (!allowed) return { ok: false, error: 'forbidden' };
+
   try {
-    await sendRfqMessage(rfqId, user.id, content, options);
+    await sendRfqMessage(rfqId, user.id, trimmed, options);
     return { ok: true };
   } catch {
     return { ok: false, error: 'send_failed' };

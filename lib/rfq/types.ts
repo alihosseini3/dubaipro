@@ -43,6 +43,9 @@ export type RfqRequestDetail = RfqRequestCard & {
   description: string;
   productRef: string | null;
   sourcingNotes: string | null;
+  /** Buyer contact — only populated for authenticated viewers. */
+  contactWhatsapp: string | null;
+  contactEmail: string | null;
   visibility: RfqVisibility;
   attachments: RfqAttachmentDTO[];
   quotes: RfqQuoteCard[];
@@ -67,6 +70,8 @@ export type RfqQuoteCard = {
   message: string | null;
   attachmentUrl: string | null;
   status: RfqQuoteStatus;
+  isStale: boolean;
+  staleReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -101,6 +106,8 @@ export type CreateRfqInput = {
   urgency?: RfqUrgency;
   visibility?: RfqVisibility;
   sourcingNotes?: string;
+  contactWhatsapp?: string;
+  contactEmail?: string;
   expiresAt?: Date;
   attachments?: Array<{ url: string; name: string; mimeType?: string; size?: number }>;
 };

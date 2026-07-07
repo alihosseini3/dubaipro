@@ -21,7 +21,7 @@ type Props = {
   onChangeFolder(name: string): void;
   onCreateFolder(name: string): Promise<void>;
   onDeleteFolder(name: string): Promise<void>;
-  onRenameFolder(name: string, newName: string): Promise<void>;
+  onRenameFolder(name: string, label: string, newName?: string): Promise<void>;
 };
 
 export function FolderSidebar({
@@ -36,8 +36,10 @@ export function FolderSidebar({
   const [error, setError]         = useState<string | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const [renameSlug, setRenameSlug] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
+  const slugRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -58,12 +60,13 @@ export function FolderSidebar({
   const startRename = (name: string, currentLabel: string | null) => {
     setRenamingFolder(name);
     setRenameVal(currentLabel || name);
+    setRenameSlug(name);
     setTimeout(() => renameRef.current?.select(), 30);
   };
 
   const handleRename = async () => {
     if (!renamingFolder || !renameVal.trim()) { setRenamingFolder(null); return; }
-    await onRenameFolder(renamingFolder, renameVal.trim());
+    await onRenameFolder(renamingFolder, renameVal.trim(), renameSlug);
     setRenamingFolder(null);
   };
 
@@ -134,13 +137,18 @@ export function FolderSidebar({
             <SectionLabel>{t('foldersCustom')}</SectionLabel>
             {customFolders.map((f) =>
               renamingFolder === f.name ? (
-                <div key={f.name} className="flex items-center gap-1 px-3 py-1">
+                <div key={f.name} className="flex flex-col gap-1 px-3 py-1">
                   <input ref={renameRef} value={renameVal} onChange={(e) => setRenameVal(e.target.value)}
+                    placeholder="Label"
                     onKeyDown={(e) => { if (e.key === 'Enter') void handleRename(); if (e.key === 'Escape') setRenamingFolder(null); }}
-                    className="flex-1 rounded-md bg-slate-700 px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-orange-500" />
+                    className="w-full rounded-md bg-slate-700 px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-orange-500" />
+                  <input ref={slugRef} value={renameSlug} onChange={(e) => setRenameSlug(e.target.value)}
+                    placeholder="Slug (optional)"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void handleRename(); if (e.key === 'Escape') setRenamingFolder(null); }}
+                    className="w-full rounded-md bg-slate-800 px-2 py-1 text-[10px] text-slate-300 outline-none focus:ring-1 focus:ring-orange-500" />
                   <button type="button" onClick={handleRename}
-                    className="rounded-md bg-orange-500 px-1.5 py-1 text-[10px] font-semibold text-white hover:bg-orange-600">
-                    ✓
+                    className="self-end rounded-md bg-orange-500 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-orange-600">
+                    Save
                   </button>
                 </div>
               ) : (

@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { RfqAttachmentUploader, type RfqAttachment } from './RfqAttachmentUploader';
+
 type Step = 1 | 2 | 3 | 4;
 
 export type WizardLabels = {
@@ -27,6 +29,8 @@ export type WizardLabels = {
   errWhatsapp: string;
   reviewLabelWhatsapp: string; reviewLabelEmail: string;
   contactHeading: string;
+  attachments: string;
+  attachmentsHint: string;
 };
 
 const UNITS = ['pcs', 'kg', 'ton', 'set', 'box', 'carton', 'pair', 'm', 'm²', 'liter', 'pack'];
@@ -65,13 +69,14 @@ type FormState = {
   sourcingNotes: string;
   whatsapp: string;
   email: string;
+  attachments: RfqAttachment[];
 };
 
 const INIT: FormState = {
   title: '', description: '', categoryId: '', productRef: '',
   quantity: '', unit: 'pcs', targetPrice: '', currency: 'USD',
   shippingCountry: '', urgency: 'STANDARD', visibility: 'PUBLIC',
-  sourcingNotes: '', whatsapp: '+', email: '',
+  sourcingNotes: '', whatsapp: '+', email: '', attachments: [],
 };
 
 type Category = { id: string; name: string };
@@ -80,10 +85,25 @@ export function RfqCreateWizard({
   locale,
   categories,
   labels,
+  mode = 'create',
+  initial,
+  initialAttachments = [],
+  slug,
+  onAttachmentsModified,
 }: {
   locale: string;
   categories: Category[];
   labels: WizardLabels;
+  /** 'create' (default) POSTs a new RFQ; 'edit' PATCHes an existing one. */
+  mode?: 'create' | 'edit';
+  /** Pre-filled values for edit mode. */
+  initial?: Partial<FormState>;
+  /** Initial attachments for edit mode. */
+  initialAttachments?: RfqAttachment[];
+  /** RFQ slug, required in edit mode. */
+  slug?: string;
+  /** Callback when attachments are modified (for staleness tracking in edit mode). */
+  onAttachmentsModified?: () => void;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -94,12 +114,21 @@ export function RfqCreateWizard({
     { id: 3, label: labels.step3 },
     { id: 4, label: labels.step4 },
   ];
-  const [form, setForm] = useState<FormState>(INIT);
+  const [form, setForm] = useState<FormState>({ ...INIT, ...initial, attachments: initialAttachments });
+  const [attachmentsModified, setAttachmentsModified] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function patch(key: keyof FormState, value: string) {
+  function patch(key: keyof FormState, value: string | RfqAttachment[]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleAttachmentsChange(attachments: RfqAttachment[]) {
+    patch('attachments', attachments);
+    if (mode === 'edit') {
+      setAttachmentsModified(true);
+      onAttachmentsModified?.();
+    }
   }
 
   function getCountryLabel(code: string) {
@@ -136,29 +165,39 @@ export function RfqCreateWizard({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/rfq/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title.trim(),
-          description: form.description.trim(),
-          categoryId: form.categoryId || undefined,
-          productRef: form.productRef || undefined,
-          quantity: Number(form.quantity),
-          unit: form.unit,
-          targetPrice: form.targetPrice ? Number(form.targetPrice) : undefined,
-          currency: form.currency,
-          shippingCountry: form.shippingCountry,
-          urgency: form.urgency,
-          visibility: form.visibility,
-          sourcingNotes: form.sourcingNotes || undefined,
-          whatsapp: form.whatsapp.trim(),
-          email: form.email.trim() || undefined,
-        }),
-      });
+      const payload = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        categoryId: form.categoryId || undefined,
+        productRef: form.productRef || undefined,
+        quantity: Number(form.quantity),
+        unit: form.unit,
+        targetPrice: form.targetPrice ? Number(form.targetPrice) : undefined,
+        currency: form.currency,
+        shippingCountry: form.shippingCountry,
+        urgency: form.urgency,
+        visibility: form.visibility,
+        sourcingNotes: form.sourcingNotes || undefined,
+        whatsapp: form.whatsapp.trim(),
+        email: form.email.trim() || undefined,
+        attachmentIds: form.attachments.map((a) => a.id),
+        attachmentsModified: mode === 'edit' ? attachmentsModified : undefined,
+      };
+
+      const isEdit = mode === 'edit' && slug;
+      const res = await fetch(
+        isEdit ? `/api/rfq/requests/${slug}` : '/api/rfq/requests',
+        {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? 'Submit failed');
-      router.push(`/${locale}/rfq/${j.data.slug}`);
+      const targetSlug = isEdit ? slug : j.data.slug;
+      router.push(`/${locale}/rfq/${targetSlug}`);
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Submission failed.');
       setSubmitting(false);
@@ -278,6 +317,14 @@ export function RfqCreateWizard({
                   />
                 </Field>
               </div>
+              <RfqAttachmentUploader
+                value={form.attachments}
+                onChange={handleAttachmentsChange}
+                folder="rfq-attachments"
+                label={labels.attachments}
+                hint={labels.attachmentsHint}
+                disabled={submitting}
+              />
             </div>
           )}
 

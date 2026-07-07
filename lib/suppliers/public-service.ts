@@ -3,6 +3,7 @@ import 'server-only';
 import { type Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { localizeArray, localizeRecord } from '@/lib/i18n/localize';
 
 import { listSuppliers } from './service';
 import {
@@ -24,9 +25,14 @@ import {
 
 /** List ACTIVE suppliers only. Thin wrapper around the core service. */
 export async function listPublicSuppliers(
-  filters: Omit<SupplierListFilters, never> = {}
+  filters: Omit<SupplierListFilters, never> = {},
+  locale = 'en'
 ): Promise<Paginated<SupplierCard>> {
-  return listSuppliers({ ...filters, onlyActive: true });
+  const result = await listSuppliers({ ...filters, onlyActive: true });
+  return {
+    ...result,
+    data: await localizeArray(result.data, locale, ['shortTagline'], 'fa')
+  };
 }
 
 /**
@@ -34,7 +40,8 @@ export async function listPublicSuppliers(
  * Returns `null` when the row does not exist OR is not publicly visible.
  */
 export async function getPublicSupplierBySlug(
-  slug: string
+  slug: string,
+  locale = 'en'
 ): Promise<SupplierPublic | null> {
   const row = await prisma.supplier.findUnique({
     where: { slug },
@@ -43,7 +50,7 @@ export async function getPublicSupplierBySlug(
 
   if (!row || row.status !== 'ACTIVE') return null;
 
-  return toSupplierPublic(row);
+  return localizeSupplier(toSupplierPublic(row), locale);
 }
 
 /**
@@ -51,7 +58,8 @@ export async function getPublicSupplierBySlug(
  * the id (e.g. internal cross-links). Same visibility rules as above.
  */
 export async function getPublicSupplierById(
-  id: string
+  id: string,
+  locale = 'en'
 ): Promise<SupplierPublic | null> {
   const row = await prisma.supplier.findUnique({
     where: { id },
@@ -60,7 +68,7 @@ export async function getPublicSupplierById(
 
   if (!row || row.status !== 'ACTIVE') return null;
 
-  return toSupplierPublic(row);
+  return localizeSupplier(toSupplierPublic(row), locale);
 }
 
 /**
@@ -152,4 +160,16 @@ function toSupplierPublic(row: PublicRow): SupplierPublic {
     yearsOnPlatform,
     verifiedAt: row.verifiedAt ? row.verifiedAt.toISOString() : null
   };
+}
+
+async function localizeSupplier(
+  supplier: SupplierPublic,
+  locale: string
+): Promise<SupplierPublic> {
+  return localizeRecord(
+    supplier,
+    locale,
+    ['shortTagline', 'description', 'shippingNotes', 'metaDescription'],
+    'fa'
+  );
 }

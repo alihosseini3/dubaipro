@@ -118,8 +118,10 @@ function buildWhere(filters: MediaListFilters = {}, duplicateHashes?: string[]):
       { alt:           { contains: q, mode: 'insensitive' } },
       { title:         { contains: q, mode: 'insensitive' } },
       { seoTitle:      { contains: q, mode: 'insensitive' } },
+      { caption:       { contains: q, mode: 'insensitive' } },
       { description:   { contains: q, mode: 'insensitive' } },
       { tags:          { has: q } },
+      { keywords:      { has: q } },
     ];
   }
 

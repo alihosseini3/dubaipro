@@ -84,10 +84,11 @@ export function UserMenu({ locale, user }: Props) {
   }
 
   const base = `/${locale}`;
+  const isSupplier = user.role === 'SUPPLIER';
   const items: Item[] = [
     {
       key: 'dashboard',
-      href: `${base}/account`,
+      href: isSupplier ? `${base}/supplier` : `${base}/account`,
       label: t('dashboard'),
       icon: mkIcon('M3 12l9-9 9 9M5 10v10h14V10')
     },
@@ -113,7 +114,7 @@ export function UserMenu({ locale, user }: Props) {
     },
     {
       key: 'profile',
-      href: `${base}/account/profile`,
+      href: isSupplier ? `${base}/supplier/profile` : `${base}/account/profile`,
       label: t('profile'),
       icon: mkIcon('M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21a8 8 0 0 1 16 0')
     }

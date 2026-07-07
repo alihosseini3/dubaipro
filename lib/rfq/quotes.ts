@@ -9,12 +9,50 @@ import { transitionRfq, SYSTEM_ACTOR } from './workflow';
 import { canTransitionQuote } from './status-machine';
 import type { SubmitQuoteInput, RfqQuoteCard } from './types';
 
+const VALID_CURRENCIES = ['USD', 'EUR', 'AED', 'IRR'];
+
+function validateQuoteInput(input: SubmitQuoteInput): string | null {
+  // Price validation
+  if (input.price <= 0 || !Number.isFinite(input.price)) {
+    return 'Price must be a positive number';
+  }
+
+  // Currency validation
+  if (!VALID_CURRENCIES.includes(input.currency)) {
+    return `Currency must be one of: ${VALID_CURRENCIES.join(', ')}`;
+  }
+
+  // MOQ validation (if provided)
+  if (input.moq !== undefined && input.moq !== null) {
+    if (input.moq <= 0 || !Number.isFinite(input.moq)) {
+      return 'MOQ must be a positive number';
+    }
+  }
+
+  // validUntil validation (if provided)
+  if (input.validUntil) {
+    const validUntil = new Date(input.validUntil);
+    const now = new Date();
+    if (validUntil <= now) {
+      return 'Valid until date must be in the future';
+    }
+  }
+
+  return null;
+}
+
 /** Supplier submits or updates a quote on an open RFQ. */
 export async function submitQuote(
   rfqId: string,
   supplierId: string,
   input: SubmitQuoteInput
 ): Promise<{ ok: boolean; quote?: RfqQuoteCard; error?: string }> {
+  // Validate input
+  const validationError = validateQuoteInput(input);
+  if (validationError) {
+    return { ok: false, error: validationError };
+  }
+
   const rfq = await prisma.rfqRequest.findUnique({
     where: { id: rfqId },
     select: { status: true, userId: true, title: true, user: { select: { email: true, name: true } } },
@@ -47,6 +85,10 @@ export async function submitQuote(
         message: input.message ?? null,
         attachmentUrl: input.attachmentUrl ?? null,
         status: 'SUBMITTED',
+        // Reconfirmation/revision clears the stale flag.
+        isStale: false,
+        staleAt: null,
+        staleReason: null,
       },
       select: QUOTE_SELECT,
     });
@@ -82,13 +124,25 @@ export async function submitQuote(
       });
     }
 
-    // Notify buyer (best-effort)
+    // Notify buyer (best-effort) - fetch supplier details for the notification
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+      select: { name: true, user: { select: { name: true } } },
+    });
     dispatchAutomation({
       eventType: 'RFQ_QUOTE_RECEIVED',
       userId: rfq.userId,
       email: rfq.user.email,
       dedupeKey: `RFQ_QUOTE_RECEIVED:${rfqId}:${supplierId}`,
-      vars: { name: rfq.user.name, product: rfq.title, price: `${input.price} ${input.currency}`, link: `/rfq/${rfqId}` },
+      vars: {
+        name: rfq.user.name,
+        title: rfq.title,
+        supplierName: supplier?.name || supplier?.user?.name || 'A supplier',
+        price: String(input.price),
+        currency: input.currency,
+        deliveryDays: input.leadTimeDays ? String(input.leadTimeDays) : 'N/A',
+        link: `/rfq/${rfqId}`,
+      },
     }).catch(() => null);
   }
 
@@ -140,8 +194,9 @@ export async function acceptQuote(
       dedupeKey: `RFQ_QUOTE_ACCEPTED:${quoteId}`,
       vars: {
         name: quote.supplier.user?.name ?? '',
-        product: quote.rfq.title,
-        price: `${Number(quote.price)} ${quote.currency}`,
+        title: quote.rfq.title,
+        price: String(Number(quote.price)),
+        currency: quote.currency,
         link: `/supplier/rfq`,
       },
     }).catch(() => null);

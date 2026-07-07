@@ -40,6 +40,7 @@ const VIEW_COOKIE_TTL = 60 * 60;
  */
 export async function GET(_request: Request, context: RouteContext) {
   const { id: idOrSlug } = await context.params;
+  const locale = new URL(_request.url).searchParams.get('locale') ?? 'en';
 
   try {
     // Resolve first to get the canonical slug, then fetch the DTO. Two
@@ -48,7 +49,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const resolved = await resolveActiveSupplierIdByParam(idOrSlug);
     if (!resolved || !resolved.slug) return notFound('Supplier not found');
 
-    const supplier = await getPublicSupplierBySlug(resolved.slug);
+    const supplier = await getPublicSupplierBySlug(resolved.slug, locale);
     if (!supplier) return notFound('Supplier not found');
 
     // View-dedup: skip counter increment if the cookie marker is present.

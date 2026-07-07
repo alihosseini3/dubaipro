@@ -114,7 +114,14 @@ export function QuoteCompareTable({ quotes, onAccept, loading }: Props) {
                   {q.supplierRating > 0 ? `★ ${q.supplierRating.toFixed(1)}` : '—'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <StatusPill status={q.status} />
+                  <div className="flex flex-col items-start gap-1">
+                    <StatusPill status={q.status} />
+                    {q.isStale && q.status === 'SUBMITTED' && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-700">
+                        {t('stale')}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 {onAccept && (
                   <td className="whitespace-nowrap px-4 py-3">

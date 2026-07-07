@@ -44,7 +44,7 @@ export default async function AuctionBidsPage({ params }: PageParams) {
   if (!result) notFound();
 
   const auction = await localizeRecord(result.auction, locale, ['title', 'description']);
-  const loginHref = `/${locale}/login?redirect=${encodeURIComponent(`/auctions/${slug}/bids`)}`;
+  const loginHref = `/${locale}/login?from=${encodeURIComponent(`/${locale}/auctions/${slug}/bids`)}`;
 
   return (
     <BidsBoard
