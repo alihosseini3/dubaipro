@@ -38,7 +38,6 @@ export function ProductActions({
   const priceAmount =
     typeof product.price === 'number' ? product.price : Number(product.price);
 
-  const rfqHref = `/${locale}/products/${product.slug}/rfq`;
   const contactHref = product.supplier
     ? `/${locale}/suppliers/${product.supplier.id}/contact`
     : `/${locale}/contact`;
@@ -87,13 +86,6 @@ export function ProductActions({
             inStock={inStock}
             maxQuantity={product.stock}
           />
-
-          <Link
-            href={rfqHref}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            {t('requestQuote')}
-          </Link>
 
           <Link
             href={contactHref}

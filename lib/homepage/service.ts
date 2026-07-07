@@ -27,7 +27,6 @@ const SECTION_TYPES = [
   'FEATURED_PRODUCTS',
   'TRUST',
   'BECOME_SUPPLIER',
-  'RFQ',
   'GLOBAL_SHOPPING',
   'TOP_SUPPLIERS',
   'AUCTION',
@@ -336,14 +335,6 @@ const DEFAULTS: ReadonlyArray<
         'UAE-based logistics'
       ]
     }
-  },
-  {
-    type: 'RFQ',
-    title: "Can't find your product?",
-    subtitle:
-      'Tell us what you need — our sourcing team finds it from UAE markets and gets back with a quote within 24 hours.',
-    ctaLabel: 'Request a custom quote',
-    ctaHref: '/contact?type=quote'
   },
   {
     type: 'GLOBAL_SHOPPING',

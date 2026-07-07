@@ -26,7 +26,6 @@ export function ProductCard({
   const inStock = product.stock > 0;
 
   const detailsHref = `/${locale}/products/${product.slug}`;
-  const rfqHref = `/${locale}/products/${product.slug}/rfq`;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
@@ -107,12 +106,6 @@ export function ProductCard({
             className="inline-flex flex-1 items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
           >
             {t('viewDetails')}
-          </Link>
-          <Link
-            href={rfqHref}
-            className="inline-flex items-center justify-center rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
-          >
-            {t('requestQuote')}
           </Link>
         </div>
       </div>

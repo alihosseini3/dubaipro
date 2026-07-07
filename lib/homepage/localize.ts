@@ -110,7 +110,7 @@ function collectSectionStrings(
       collectArray(cfg.items, out, ['title']);
       break;
 
-    // HERO / FEATURED_PRODUCTS / CATEGORIES / TOP_SUPPLIERS / BLOG / RFQ
+    // HERO / FEATURED_PRODUCTS / CATEGORIES / TOP_SUPPLIERS / BLOG
     // pull their dynamic body copy from product/category/etc rows,
     // which are localised separately (categories/products/posts) or
     // have no extra strings of their own.

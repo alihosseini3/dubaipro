@@ -11,7 +11,6 @@
 - B2B/B2C marketplace
 - Product management
 - Dynamic filters
-- RFQ system
 - Multi-language RTL support
 
 ## Architecture

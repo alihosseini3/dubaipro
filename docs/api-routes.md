@@ -375,27 +375,6 @@ app/api/
 - **توضیح**: جزئیات محصول
 - **Auth**: ADMIN only
 
-### RFQ
-
-#### GET /api/admin/rfq
-- **توضیح**: لیست RFQها
-- **Auth**: ADMIN only
-- **Query**: `page`, `limit`, `status`
-
-#### GET /api/admin/rfq/[id]
-- **توضیح**: جزئیات RFQ
-- **Auth**: ADMIN only
-
-#### PUT /api/admin/rfq/[id]/status
-- **توضیح**: تغییر وضعیت RFQ
-- **Auth**: ADMIN only
-- **Body**: `{ status }`
-
-#### POST /api/admin/rfq/[id]/quote
-- **توضیح**: ارسال قیمت پیشنهادی
-- **Auth**: SUPPLIER only
-- **Body**: `{ quotedPrice, message }`
-
 ### Settings
 
 #### GET /api/admin/settings

@@ -13,7 +13,7 @@ export async function GET() {
         email: true,
         role: true,
         createdAt: true,
-        _count: { select: { orders: true, rfqs: true } }
+        _count: { select: { orders: true } }
       }
     });
     return NextResponse.json({ data: users });

@@ -72,7 +72,6 @@ prisma/schema.prisma
 ├── Product          # محصولات
 ├── Order            # سفارشات
 ├── Cart             # سبد خرید
-├── RFQ              # درخواست قیمت
 ├── Coupon           # کوپن‌ها
 ├── Payment          # پرداخت‌ها
 ├── AutomationRule   # قوانین اتوماسیون

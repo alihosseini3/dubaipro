@@ -9,9 +9,6 @@ import type { HomepageSectionType } from '@prisma/client';
  * with these shapes — never trust the raw row.
  */
 
-/** No extra config — every field on the row is enough. */
-export type EmptyConfig = Record<string, never>;
-
 /** HERO — optional list of trust chips shown under the CTAs. */
 export type HeroConfig = {
   /** Three short trust badges, e.g. "Verified", "Fast shipping". */
@@ -52,9 +49,6 @@ export type TrustConfig = {
 export type BecomeSupplierConfig = {
   benefits?: string[];
 };
-
-/** RFQ — banner with a single big CTA. No extra config today. */
-export type RfqConfig = EmptyConfig;
 
 /** GLOBAL_SHOPPING — one card per platform we shop on behalf of buyers
  *  (Amazon UAE, Noon, Shein, Alibaba, Dubai markets, …). */
@@ -119,7 +113,6 @@ export type SectionConfigByType = {
   FEATURED_PRODUCTS: FeaturedProductsConfig;
   TRUST: TrustConfig;
   BECOME_SUPPLIER: BecomeSupplierConfig;
-  RFQ: RfqConfig;
   GLOBAL_SHOPPING: GlobalShoppingConfig;
   TOP_SUPPLIERS: TopSuppliersConfig;
   AUCTION: AuctionConfig;

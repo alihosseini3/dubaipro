@@ -14,7 +14,6 @@ type Row = {
   country: string;
   verified: boolean;
   productCount: number;
-  rfqCount: number;
 };
 
 export default async function AdminSuppliersPage({ params }: Props) {
@@ -24,7 +23,7 @@ export default async function AdminSuppliersPage({ params }: Props) {
 
   const suppliers = await prisma.supplier.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { products: true, rfqs: true } } }
+    include: { _count: { select: { products: true } } }
   });
 
   const rows: Row[] = suppliers.map((s) => ({
@@ -32,8 +31,7 @@ export default async function AdminSuppliersPage({ params }: Props) {
     name: s.name,
     country: s.country,
     verified: s.verified,
-    productCount: s._count.products,
-    rfqCount: s._count.rfqs
+    productCount: s._count.products
   }));
 
   const columns: Column<Row>[] = [
@@ -53,7 +51,6 @@ export default async function AdminSuppliersPage({ params }: Props) {
       render: (r) => <StatusBadge status={r.verified ? 'TRUE' : 'FALSE'} variant="bool" />
     },
     { key: 'products', header: t('headerProducts'), render: (r) => r.productCount },
-    { key: 'rfqs', header: t('headerRfqs'), render: (r) => r.rfqCount },
     {
       key: 'actions',
       header: tCommon('actions'),

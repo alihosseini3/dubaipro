@@ -32,18 +32,6 @@ enum OrderStatus {
 }
 ```
 
-#### RfqStatus
-```prisma
-enum RfqStatus {
-  OPEN
-  REVIEWING
-  QUOTED
-  ACCEPTED
-  REJECTED
-  CLOSED
-}
-```
-
 #### PaymentStatus
 ```prisma
 enum PaymentStatus {
@@ -82,7 +70,6 @@ enum AutomationEventType {
   CART_ABANDONED
   ORDER_CREATED
   PAYMENT_SUCCESS
-  RFQ_CREATED
   FIRST_PURCHASE_UPSELL
   POST_PURCHASE_REMINDER
   INACTIVE_COMEBACK
@@ -182,7 +169,6 @@ model User {
   
   supplier  Supplier?
   orders    Order[]
-  rfqs      RFQ[]
   cart      Cart?
   addresses Address[]
   wishlist  Wishlist?
@@ -272,7 +258,6 @@ model Supplier {
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   products  Product[]
-  rfqs      RFQ[]
   auctions  Auction[]
 
   @@index([country])
@@ -356,7 +341,6 @@ model Product {
   category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   brand       Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
   orderItems  OrderItem[]
-  rfqs        RFQ[]
   cartItems   CartItem[]
   wishlistItems WishlistItem[]
   reviews     Review[]
@@ -639,30 +623,6 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@unique([orderId, productId])
-}
-```
-
-### RFQ
-```prisma
-model RFQ {
-  id          String     @id @default(cuid())
-  userId       String?
-  productId    String
-  supplierId   String
-  quantity     Int
-  message      String     @db.Text
-  status       RfqStatus  @default(OPEN)
-  createdAt    DateTime   @default(now())
-
-  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  product      Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
-  supplier     Supplier   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-
-  @@index([userId])
-  @@index([productId])
-  @@index([supplierId])
-  @@index([status])
-  @@index([createdAt])
 }
 ```
 
@@ -1029,7 +989,6 @@ model UserMetrics {
 - **Order**: userId, status, createdAt, updatedAt
 - **Coupon**: code, isActive, expiresAt, startAt
 - **Payment**: orderId, status, provider
-- **RFQ**: userId, productId, supplierId, status, createdAt
 - **CurrencyRate**: target, (base, target) unique
 - **AutomationLog**: userId, createdAt, eventType, createdAt
 - **ExperimentEvent**: experimentId, type, createdAt

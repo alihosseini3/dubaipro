@@ -40,7 +40,6 @@ export default async function SupplierDashboardLayout({ children, params }: Prop
   const nav: SupplierNavItem[] = [
     { key: 'overview', label: t('overview'), href: `/${locale}/supplier`, exact: true },
     { key: 'products', label: t('products'), href: `/${locale}/supplier/products` },
-    { key: 'rfq', label: t('rfq'), href: `/${locale}/supplier/rfq` },
     { key: 'analytics', label: t('analytics'), href: `/${locale}/supplier/analytics` },
     { key: 'profile', label: t('profile'), href: `/${locale}/supplier/profile` },
   ];

@@ -7,7 +7,6 @@ import { CategoriesSection } from './CategoriesSection';
 import { FeaturedProductsSection } from './FeaturedProductsSection';
 import { GlobalShoppingSection } from './GlobalShoppingSection';
 import { HeroSection } from './HeroSection';
-import { RFQSection } from './RFQSection';
 import { TopSuppliersSection } from './TopSuppliersSection';
 import { TrustSection } from './TrustSection';
 
@@ -52,8 +51,6 @@ export function SectionRenderer({ locale, sections }: Props) {
                 section={section}
               />
             );
-          case 'RFQ':
-            return <RFQSection key={section.id} locale={locale} section={section} />;
           case 'GLOBAL_SHOPPING':
             return (
               <GlobalShoppingSection

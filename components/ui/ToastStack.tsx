@@ -1,9 +1,9 @@
 'use client';
 
-import { useRfqUiStore } from '@/lib/stores/rfq-ui-store';
+import { useToastStore } from '@/lib/stores/toast-store';
 
 export function ToastStack() {
-  const { toasts, removeToast } = useRfqUiStore();
+  const { toasts, removeToast } = useToastStore();
 
   if (toasts.length === 0) return null;
 

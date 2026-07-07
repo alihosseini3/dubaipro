@@ -56,7 +56,7 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
       email: true,
       role: true,
       createdAt: true,
-      _count: { select: { orders: true, rfqs: true } }
+      _count: { select: { orders: true } }
     }
   });
 
@@ -98,7 +98,6 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
                   t('headerEmail'),
                   t('headerRole'),
                   t('headerOrders'),
-                  t('headerRfqs'),
                   t('headerJoined')
                 ].map((h) => (
                   <th
@@ -143,11 +142,6 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
                   <td className="px-4 py-3 align-middle tabular-nums text-slate-700">
                     <Link href={`/${locale}/admin/users/${u.id}`} className="block">
                       {u._count.orders}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 align-middle tabular-nums text-slate-700">
-                    <Link href={`/${locale}/admin/users/${u.id}`} className="block">
-                      {u._count.rfqs}
                     </Link>
                   </td>
                   <td className="px-4 py-3 align-middle tabular-nums text-slate-600">

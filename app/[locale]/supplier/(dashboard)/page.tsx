@@ -36,7 +36,7 @@ export default async function SupplierOverviewPage({ params }: Props) {
 
   const range = parseRange({ preset: '7d', from: null, to: null });
 
-  const [t, display, data, productStats, pendingInvites, activeQuotes, profile] =
+  const [t, display, data, productStats, profile] =
     await Promise.all([
       getTranslations({ locale, namespace: 'supplier.overview' }),
       getDisplayCurrency(locale),
@@ -45,12 +45,6 @@ export default async function SupplierOverviewPage({ params }: Props) {
         by: ['isPublished'],
         where: { supplierId: supplier.id },
         _count: { id: true },
-      }),
-      prisma.rfqSupplierInvite.count({
-        where: { supplierId: supplier.id, viewedAt: null },
-      }),
-      prisma.rfqQuote.count({
-        where: { supplierId: supplier.id, status: { notIn: ['WITHDRAWN'] } },
       }),
       prisma.supplier.findUnique({
         where: { id: supplier.id },
@@ -88,7 +82,6 @@ export default async function SupplierOverviewPage({ params }: Props) {
 
   const quickActions = [
     { label: t('addProduct'), desc: t('addProductDesc'), href: `/${locale}/supplier/products/new`, accent: 'bg-orange-50 text-orange-600' },
-    { label: t('rfqInbox'), desc: pendingInvites > 0 ? t('rfqInboxNew', { count: pendingInvites }) : t('rfqInboxDesc'), href: `/${locale}/supplier/rfq`, accent: 'bg-sky-50 text-sky-600' },
     { label: t('analyticsLink'), desc: t('analyticsDesc'), href: `/${locale}/supplier/analytics`, accent: 'bg-violet-50 text-violet-600' },
     { label: t('myProducts'), desc: t('myProductsInCatalog', { count: totalProducts }), href: `/${locale}/supplier/products`, accent: 'bg-emerald-50 text-emerald-600' },
   ];
@@ -245,14 +238,6 @@ export default async function SupplierOverviewPage({ params }: Props) {
 
           <AdminCard title={t('atAGlance')}>
             <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{t('newRFQs')}</dt>
-                <dd className="mt-1 text-xl font-bold text-slate-900">{pendingInvites}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{t('activeQuotes')}</dt>
-                <dd className="mt-1 text-xl font-bold text-slate-900">{activeQuotes}</dd>
-              </div>
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{t('profileViews')}</dt>
                 <dd className="mt-1 text-xl font-bold text-slate-900">{(profile?.profileViews ?? 0).toLocaleString()}</dd>

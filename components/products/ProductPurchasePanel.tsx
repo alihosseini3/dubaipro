@@ -69,8 +69,6 @@ export function ProductPurchasePanel({
   const [pending, setPending] = useState<'add' | 'buy' | null>(null);
   const [flash, setFlash] = useState<'success' | { error: string } | null>(null);
 
-  const rfqHref = `/${locale}/products/${product.slug}/rfq`;
-
   function bump(delta: number) {
     setQty((q) => Math.min(cap, Math.max(1, q + delta)));
   }
@@ -283,13 +281,7 @@ export function ProductPurchasePanel({
             {pending === 'buy' ? tCart('adding') : t('buyNow')}
           </button>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              href={rfqHref}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              {t('requestQuote')}
-            </Link>
+          <div className="grid grid-cols-1 gap-2">
             <WishlistButton
               productId={product.id}
               locale={locale}

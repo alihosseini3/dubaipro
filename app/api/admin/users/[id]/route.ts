@@ -60,7 +60,7 @@ export async function GET(_request: Request, context: RouteContext) {
           }
         },
         supplier: { select: { id: true, name: true, country: true, verified: true } },
-        _count: { select: { orders: true, rfqs: true, addresses: true } }
+        _count: { select: { orders: true, addresses: true } }
       }
     });
     if (!user) return notFound('User not found');
@@ -142,7 +142,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 /**
  * DELETE /api/admin/users/[id]
  *
- * Admin-only. Hard delete — cascades per schema (cart, addresses, RFQs,
+ * Admin-only. Hard delete — cascades per schema (cart, addresses,
  * supplier profile). Orders have `onDelete: Restrict`, so deletion is
  * refused for users with existing orders to protect historical data.
  *

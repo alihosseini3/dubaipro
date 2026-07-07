@@ -1,6 +1,6 @@
 type StatusBadgeProps = {
   status: string;
-  variant?: 'rfq' | 'order' | 'bool' | 'role' | 'neutral';
+  variant?: 'order' | 'bool' | 'role' | 'neutral';
   dot?: boolean;
 };
 

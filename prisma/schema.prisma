@@ -22,15 +22,6 @@ enum OrderStatus {
   CANCELLED
 }
 
-enum RfqStatus {
-  OPEN
-  REVIEWING
-  QUOTED
-  ACCEPTED
-  REJECTED
-  CLOSED
-}
-
 enum PaymentStatus {
   PENDING
   PROCESSING
@@ -152,7 +143,6 @@ model User {
 
   supplier               Supplier?
   orders                 Order[]
-  rfqs                   RFQ[]
   cart                   Cart?
   addresses              Address[]
   wishlist               Wishlist?
@@ -172,8 +162,6 @@ model User {
   auctionWins            Auction[]            @relation("AuctionWinner")
   auctionWatches         AuctionWatch[]
   uploadedMedia          MediaAsset[]
-  rfqRequests            RfqRequest[]
-  rfqMessages            RfqMessage[]
   b2bInquiries           B2BInquiry[] // Alibaba-style product inquiries
   /// Suppliers this user follows (one row per follow). Cascade-deleted
   /// with the user. The reverse counter lives on `Supplier.followerCount`.
@@ -332,9 +320,6 @@ model Supplier {
 
   user                User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   products            Product[]
-  rfqs                RFQ[]
-  rfqQuotes           RfqQuote[]
-  rfqInvites          RfqSupplierInvite[]
   auctions            Auction[]
   certifications      SupplierCertification[]
   followers           SupplierFollower[]
@@ -544,7 +529,6 @@ model Category {
   megaMenuItems      MegaMenuItem[]
   categoryAttributes CategoryAttribute[]
   filterConfig       CategoryFilterConfig?
-  rfqRequests        RfqRequest[]
   /// Suppliers that picked this category as their primary (Step 4).
   primarySuppliers   Supplier[]            @relation("SupplierPrimaryCategory")
   /// Secondary-category join rows pointing here.
@@ -613,7 +597,6 @@ model Product {
   category        Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   brand           Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
   orderItems      OrderItem[]
-  rfqs            RFQ[]
   cartItems       CartItem[]
   wishlistItems   WishlistItem[]
   reviews         Review[]
@@ -936,27 +919,6 @@ model OrderItem {
   @@index([productId])
 }
 
-model RFQ {
-  id         String    @id @default(cuid())
-  userId     String?
-  productId  String
-  supplierId String
-  quantity   Int
-  message    String    @db.Text
-  status     RfqStatus @default(OPEN)
-  createdAt  DateTime  @default(now())
-
-  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-
-  @@index([userId])
-  @@index([productId])
-  @@index([supplierId])
-  @@index([status])
-  @@index([createdAt])
-}
-
 /// Directed FX rate override: `1 base = rate * target`.
 ///
 /// Today every row has `base = "AED"` (the fixed storefront base), but the
@@ -1142,7 +1104,6 @@ enum AutomationEventType {
   CART_ABANDONED
   ORDER_CREATED
   PAYMENT_SUCCESS
-  RFQ_CREATED
   /// Sent right after a user's FIRST paid order — typically an upsell.
   FIRST_PURCHASE_UPSELL
   /// Sent ~7 days after any paid order — replenishment / review prompt.
@@ -1155,15 +1116,6 @@ enum AutomationEventType {
   ORDER_FOLLOWUP
   /// Targeted discount or coupon offer.
   DISCOUNT_OFFER
-  /// Enterprise RFQ ecosystem events (RfqRequest model).
-  RFQ_REQUEST_CREATED
-  RFQ_PUBLISHED
-  RFQ_EXPIRED
-  RFQ_QUOTE_RECEIVED
-  RFQ_QUOTE_ACCEPTED
-  RFQ_STALE
-  RFQ_EXPIRING
-  RFQ_SUPPLIER_INVITED
 }
 
 enum CampaignStatus {
@@ -1669,7 +1621,6 @@ enum HomepageSectionType {
   FEATURED_PRODUCTS
   TRUST
   BECOME_SUPPLIER
-  RFQ
   GLOBAL_SHOPPING
   TOP_SUPPLIERS
   AUCTION
@@ -1858,8 +1809,8 @@ model HomepageSection {
   ctaSecondaryHref  String?             @db.VarChar(500)
   /// Optional accent badge above the title (hero "Direct from UAE").
   badge             String?             @db.VarChar(100)
-  /// Optional hero / banner image. Used by HERO + BECOME_SUPPLIER +
-  /// RFQ; ignored by sections that compose their own visuals.
+  /// Optional hero / banner image. Used by HERO + BECOME_SUPPLIER;
+  /// ignored by sections that compose their own visuals.
   imageUrl          String?             @db.VarChar(2048)
   /// Per-type free-form configuration. See `lib/homepage/types.ts`
   /// for the documented shapes (e.g. `{ productIds: string[] }`).
@@ -2160,239 +2111,6 @@ model GalleryFolder {
 
   @@index([name])
   @@index([parentId])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Enterprise RFQ Ecosystem (B2B sourcing — Alibaba-grade)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Lifecycle of a standalone sourcing request.
-enum RfqRequestStatus {
-  DRAFT
-  PENDING_REVIEW
-  OPEN
-  NEGOTIATING
-  QUOTED
-  ACCEPTED
-  FULFILLED
-  CLOSED
-  CANCELLED
-  EXPIRED
-}
-
-/// Who can see the RFQ. PUBLIC = any active supplier; INVITED_ONLY = only
-/// suppliers in RfqSupplierInvite; PRIVATE = buyer + admin only.
-enum RfqVisibility {
-  PUBLIC
-  INVITED_ONLY
-  PRIVATE
-}
-
-/// State of a single supplier quote on an RFQ.
-enum RfqQuoteStatus {
-  DRAFT
-  SUBMITTED
-  ACCEPTED
-  REJECTED
-  WITHDRAWN
-}
-
-/// Buyer-declared urgency shown to suppliers in their inbox.
-enum RfqUrgency {
-  STANDARD
-  URGENT
-  ASAP
-}
-
-/// Standalone B2B sourcing request. Separate from the legacy `RFQ` model
-/// (product-tied contact form). Buyers post an RfqRequest; suppliers
-/// respond with RfqQuote; negotiation happens via RfqMessage.
-model RfqRequest {
-  id             String           @id @default(cuid())
-  slug           String           @unique
-  userId         String
-  title          String           @db.VarChar(300)
-  description    String           @db.Text
-  categoryId     String?
-  /// Optional reference product name/URL from the buyer.
-  productRef     String?          @db.VarChar(500)
-  quantity       Int
-  unit           String           @default("pcs") @db.VarChar(32)
-  targetPrice    Decimal?         @db.Decimal(12, 2)
-  currency       String           @default("USD") @db.VarChar(3)
-  /// ISO 3166-1 alpha-2 destination country.
-  shippingCountry String          @db.VarChar(2)
-  urgency        RfqUrgency       @default(STANDARD)
-  visibility     RfqVisibility    @default(PUBLIC)
-  status         RfqRequestStatus @default(DRAFT)
-  sourcingNotes  String?          @db.Text
-  /// Buyer's WhatsApp number (E.164, with country code) for supplier contact.
-  contactWhatsapp String?         @db.VarChar(32)
-  /// Optional buyer email for supplier contact.
-  contactEmail   String?          @db.VarChar(255)
-  expiresAt      DateTime?
-  /// Denormalized: incremented by service on each quote submission.
-  quoteCount     Int              @default(0)
-  viewCount      Int              @default(0)
-  /// Number of times the buyer has extended the deadline.
-  extensionCount Int              @default(0)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  quotes      RfqQuote[]
-  messages    RfqMessage[]
-  attachments RfqAttachment[]
-  invites     RfqSupplierInvite[]
-  auditLogs   RfqAuditLog[]
-  outboxEvents RfqEventOutbox[]
-
-  @@index([userId, createdAt])
-  @@index([status, visibility])
-  @@index([categoryId])
-  @@index([slug])
-  @@index([expiresAt])
-  @@index([urgency, status])
-}
-
-/// File attachment uploaded by the buyer when creating an RFQ.
-model RfqAttachment {
-  id        String   @id @default(cuid())
-  rfqId     String
-  url       String   @db.VarChar(2048)
-  name      String   @db.VarChar(255)
-  mimeType  String?  @db.VarChar(128)
-  size      Int?
-  createdAt DateTime @default(now())
-
-  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-
-  @@index([rfqId])
-}
-
-/// Supplier invite to a specific RFQ. Created by the buyer (or by the
-/// auto-matching engine). `viewedAt` is stamped when the supplier first
-/// opens the RFQ detail page from their inbox.
-model RfqSupplierInvite {
-  id         String    @id @default(cuid())
-  rfqId      String
-  supplierId String
-  invitedAt  DateTime  @default(now())
-  viewedAt   DateTime?
-
-  rfq      RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  supplier Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-
-  @@unique([rfqId, supplierId])
-  @@index([supplierId, invitedAt])
-  @@index([rfqId])
-}
-
-/// Supplier quote in response to an RfqRequest. One active quote per
-/// (rfqId, supplierId). Re-quotes: supplier WITHDRAWs then resubmits,
-/// or edits while still in DRAFT/SUBMITTED state.
-model RfqQuote {
-  id            String         @id @default(cuid())
-  rfqId         String
-  supplierId    String
-  price         Decimal        @db.Decimal(12, 2)
-  currency      String         @default("USD") @db.VarChar(3)
-  moq           Int?
-  leadTimeDays  Int?
-  shippingTerms String?        @db.VarChar(100)
-  paymentTerms  String?        @db.VarChar(100)
-  validUntil    DateTime?
-  message       String?        @db.Text
-  attachmentUrl String?        @db.VarChar(2048)
-  status        RfqQuoteStatus @default(SUBMITTED)
-  /// Set when the buyer makes a material change (quantity, target price,
-  /// destination, specs, attachments) after this quote was submitted. The
-  /// supplier must reconfirm or revise; cleared on the next (re)submission.
-  isStale       Boolean        @default(false)
-  staleAt       DateTime?
-  staleReason   String?        @db.VarChar(300)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  rfq      RfqRequest   @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  supplier Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  messages RfqMessage[]
-
-  @@unique([rfqId, supplierId])
-  @@index([rfqId, status])
-  @@index([supplierId, createdAt])
-  @@index([status])
-}
-
-/// Per-RFQ (or per-Quote) negotiation message. Separate from the general
-/// Conversation/Message system — scoped to a single sourcing deal.
-model RfqMessage {
-  id            String    @id @default(cuid())
-  rfqId         String
-  /// When non-null, this message is scoped to a specific quote thread.
-  quoteId       String?
-  senderId      String
-  content       String    @db.Text
-  attachmentUrl String?   @db.VarChar(2048)
-  isRead        Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-
-  rfq    RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  quote  RfqQuote?  @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([rfqId, createdAt])
-  @@index([quoteId, createdAt])
-  @@index([senderId])
-  @@index([isRead])
-}
-
-enum OutboxStatus {
-  PENDING
-  DELIVERED
-  FAILED
-}
-
-/// Immutable append-only audit log for every RFQ state transition.
-/// actorId is NOT a FK — can be 'system' for automated transitions.
-model RfqAuditLog {
-  id          String            @id @default(cuid())
-  rfqId       String
-  fromStatus  RfqRequestStatus?
-  toStatus    RfqRequestStatus
-  /// userId or 'system'
-  actorId     String            @db.VarChar(36)
-  actorRole   String            @db.VarChar(20)
-  trigger     String            @db.VarChar(100)
-  reason      String?           @db.VarChar(500)
-  metadata    Json?
-  createdAt   DateTime          @default(now())
-
-  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-
-  @@index([rfqId, createdAt])
-  @@index([createdAt])
-}
-
-/// Transactional outbox for domain events. Written in same DB transaction
-/// as the state change; delivered async by a background relay.
-model RfqEventOutbox {
-  id          String       @id @default(cuid())
-  rfqId       String
-  eventType   String       @db.VarChar(100)
-  payload     Json
-  status      OutboxStatus @default(PENDING)
-  attempts    Int          @default(0)
-  /// Last delivery error message (null when delivered/pending). Set by the relay.
-  lastError   String?      @db.VarChar(1000)
-  createdAt   DateTime     @default(now())
-  deliveredAt DateTime?
-
-  rfq RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-
-  @@index([status, createdAt])
-  @@index([rfqId])
 }
 
 /// Stores the value of one attribute for one product.

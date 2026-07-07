@@ -479,7 +479,7 @@ export function SupplierRegisterWizard({
           Become a verified supplier
         </h1>
         <p className="mt-2 max-w-xl text-sm text-slate-300">
-          List your company, showcase your store, and start receiving orders and RFQs from
+          List your company, showcase your store, and start receiving orders from
           verified buyers across the region.
         </p>
       </div>

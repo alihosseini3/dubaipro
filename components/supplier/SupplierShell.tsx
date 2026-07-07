@@ -28,9 +28,6 @@ const ICONS: Record<string, ReactNode> = {
     <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   ),
   products: <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
-  rfq: (
-    <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z" />
-  ),
   analytics: <path d="M9 19v-6a1 1 0 00-1-1H5a1 1 0 00-1 1v6m5 0H4m5 0h6m0 0V9a1 1 0 011-1h3a1 1 0 011 1v10m-5 0h5m0 0V5a1 1 0 011-1h0" />,
   profile: <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
 };
