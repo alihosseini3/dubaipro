@@ -3163,6 +3163,22 @@
       "subscription_assigned": "پلن شما به {planCode} تغییر کرد (اعتبار تا {periodEnd}).",
       "subscription_expiring": "پلن {planCode} شما در {periodEnd} منقضی می‌شود. برای حفظ سقف‌ها تمدید کنید.",
       "subscription_expired": "پلن {planCode} شما منقضی شد — حساب به پلن رایگان منتقل شد."
+    },
+    "emails": {
+      "product_approved_subject": "محصول «{productTitle}» تایید شد",
+      "product_approved_body": "خبر خوب — «{productTitle}» بازبینی را گذراند و اکنون در DubaiPro منتشر است.",
+      "product_rejected_subject": "محصول «{productTitle}» نیاز به اصلاح دارد",
+      "product_rejected_body": "«{productTitle}» تایید نشد. دلیل: {reason}. موارد را اصلاح و از پنل تامین‌کننده دوباره ارسال کنید.",
+      "sample_requested_subject": "درخواست نمونه جدید برای «{productTitle}»",
+      "sample_requested_body": "{buyerName} برای «{productTitle}» درخواست نمونه داده است. در پنل تامین‌کننده بررسی کنید.",
+      "sample_status_subject": "بروزرسانی درخواست نمونه: {status}",
+      "sample_status_body": "وضعیت درخواست نمونه شما برای «{productTitle}» اکنون {status} است.",
+      "subscription_assigned_subject": "پلن DubaiPro شما اکنون {planCode} است",
+      "subscription_assigned_body": "اشتراک تامین‌کننده شما به پلن {planCode} تغییر کرد (اعتبار تا {periodEnd}).",
+      "subscription_expiring_subject": "پلن {planCode} شما در {periodEnd} منقضی می‌شود",
+      "subscription_expiring_body": "اشتراک {planCode} شما در {periodEnd} پایان می‌یابد. برای حفظ سقف‌های فعلی تمدید کنید — وگرنه حساب به پلن رایگان منتقل می‌شود.",
+      "subscription_expired_subject": "پلن {planCode} شما منقضی شد",
+      "subscription_expired_body": "اشتراک {planCode} شما منقضی شد و حساب به پلن رایگان منتقل شد. محصولات موجود قابل مشاهده می‌مانند؛ ساخت جدید تابع سقف‌های پلن رایگان است."
     }
   }
 }

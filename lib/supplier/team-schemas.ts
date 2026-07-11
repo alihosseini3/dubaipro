@@ -43,6 +43,11 @@ export const acceptInviteSchema = z.object({
   token: z.string().min(20).max(200),
   /** Required only when the invited email has no account yet. */
   name: z.string().trim().min(1).max(120).optional(),
-  password: z.string().min(8).max(128).optional()
+  password: z.string().min(8).max(128).optional(),
+  /** UI locale of the joining member — stored as preferredLocale. */
+  locale: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional()
 });
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;

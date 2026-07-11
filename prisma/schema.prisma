@@ -130,21 +130,25 @@ enum SupplierDocumentType {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  name         String
-  email        String      @unique
-  password     String
-  role         UserRole    @default(CUSTOMER)
+  id              String      @id @default(cuid())
+  name            String
+  email           String      @unique
+  password        String
+  role            UserRole    @default(CUSTOMER)
   /// Top-level account intent chosen at registration. `UserRole` stays the
   /// authoritative permission boundary; this is descriptive metadata.
-  accountType  AccountType @default(BUYER)
+  accountType     AccountType @default(BUYER)
   /// Account mobile number. Optional for legacy/buyer accounts; required &
   /// unique for supplier self-registration (enforced in the service layer).
-  phone        String?     @unique
+  phone           String?     @unique
   /// Public-facing affiliate code. Lazily generated on first /account/referral
   /// visit (or on demand). Indexed unique so we can resolve by `?ref=`.
-  referralCode String?     @unique
-  createdAt    DateTime    @default(now())
+  referralCode    String?     @unique
+  /// UI locale the user last used (captured at register/login/invite-accept).
+  /// Drives the language of outbound email/WhatsApp notifications; in-app
+  /// notifications always render in the viewer's live locale instead.
+  preferredLocale String      @default("en") @db.VarChar(5)
+  createdAt       DateTime    @default(now())
 
   supplier               Supplier?
   orders                 Order[]

@@ -3162,6 +3162,22 @@
       "subscription_assigned": "Your plan changed to {planCode} (valid until {periodEnd}).",
       "subscription_expiring": "Your {planCode} plan expires on {periodEnd}. Renew to keep your limits.",
       "subscription_expired": "Your {planCode} plan expired — your account moved to FREE."
+    },
+    "emails": {
+      "product_approved_subject": "Your product \"{productTitle}\" was approved",
+      "product_approved_body": "Good news — \"{productTitle}\" passed review and is now live on DubaiPro.",
+      "product_rejected_subject": "Your product \"{productTitle}\" needs changes",
+      "product_rejected_body": "\"{productTitle}\" was not approved. Reason: {reason}. Fix the issues and resubmit from your supplier panel.",
+      "sample_requested_subject": "New sample request for \"{productTitle}\"",
+      "sample_requested_body": "{buyerName} requested a sample of \"{productTitle}\". Review it in your supplier panel.",
+      "sample_status_subject": "Sample request update: {status}",
+      "sample_status_body": "Your sample request for \"{productTitle}\" is now {status}.",
+      "subscription_assigned_subject": "Your DubaiPro plan is now {planCode}",
+      "subscription_assigned_body": "Your supplier subscription was changed to the {planCode} plan (valid until {periodEnd}).",
+      "subscription_expiring_subject": "Your {planCode} plan expires on {periodEnd}",
+      "subscription_expiring_body": "Your {planCode} subscription ends on {periodEnd}. Renew it to keep your current limits — otherwise your account moves to the FREE plan.",
+      "subscription_expired_subject": "Your {planCode} plan has expired",
+      "subscription_expired_body": "Your {planCode} subscription expired and your account moved to the FREE plan. Existing products stay visible; new creations follow the FREE limits."
     }
   }
 }

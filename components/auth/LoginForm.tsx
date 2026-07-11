@@ -44,7 +44,7 @@ export function LoginForm({ locale }: LoginFormProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password })
+        body: JSON.stringify({ email: email.trim(), password, locale })
       });
 
       const payload = (await res.json().catch(() => ({}))) as {

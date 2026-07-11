@@ -5,10 +5,13 @@ import { badRequest, handlePrismaError } from '@/lib/api/errors';
 import { isNonEmptyString, parseJsonBody } from '@/lib/api/validation';
 import { verifyPassword } from '@/lib/auth/password';
 import { createSession } from '@/lib/auth/session';
+import { normalizeLocale } from '@/lib/notifications/email-i18n';
 
 type LoginBody = {
   email?: unknown;
   password?: unknown;
+  /** UI locale at login time — refreshes User.preferredLocale (best effort). */
+  locale?: unknown;
 };
 
 const GENERIC_ERROR = 'Invalid email or password';
@@ -45,6 +48,17 @@ export async function POST(request: Request) {
 
     const { password: _unused, ...publicUser } = user;
     await createSession(publicUser);
+
+    // Keep the outbound-notification locale in sync with the UI language the
+    // user actually logs in with. Fire-and-forget — never blocks the login.
+    if (isNonEmptyString(body.locale)) {
+      void prisma.user
+        .update({
+          where: { id: user.id },
+          data: { preferredLocale: normalizeLocale(body.locale) }
+        })
+        .catch(() => {});
+    }
 
     return NextResponse.json({ data: publicUser });
   } catch (error) {

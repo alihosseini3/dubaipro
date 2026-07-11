@@ -13,6 +13,7 @@ import {
   type NotificationParams,
   type NotificationTemplateKey
 } from './registry';
+import { renderNotificationEmail } from './email-i18n';
 
 /**
  * Notification fan-out.
@@ -86,12 +87,18 @@ async function dispatchSideChannels(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, phone: true }
+    select: { email: true, phone: true, preferredLocale: true }
   });
 
+  // Outbound copy is rendered ONCE in the recipient's preferred locale and
+  // shared by both side channels.
+  const rendered =
+    template.email && user
+      ? await renderNotificationEmail(templateKey, params, user.preferredLocale)
+      : null;
+
   if (channels.includes('email')) {
-    if (user?.email && template.email) {
-      const rendered = template.email(params);
+    if (user?.email && rendered) {
       const result = await sendEmail({
         to: user.email,
         subject: rendered.subject,
@@ -105,8 +112,7 @@ async function dispatchSideChannels(
   }
 
   if (channels.includes('whatsapp')) {
-    if (user?.phone && template.email) {
-      const rendered = template.email(params);
+    if (user?.phone && rendered) {
       const result = await sendWhatsAppMessage({
         to: user.phone,
         body: `${rendered.subject}\n${rendered.text}`

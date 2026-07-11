@@ -164,6 +164,7 @@ export async function acceptInvite(params: {
   token: string;
   name?: string;
   password?: string;
+  locale?: string;
 }) {
   const invite = await findPendingInvite(params.token);
   if (!invite) throw new TeamError('Invitation is invalid or has expired', 400);
@@ -192,7 +193,8 @@ export async function acceptInvite(params: {
         email: invite.email,
         password: passwordHash,
         role: UserRole.SUPPLIER,
-        accountType: 'SUPPLIER'
+        accountType: 'SUPPLIER',
+        ...(params.locale ? { preferredLocale: params.locale } : {})
       },
       select: { id: true }
     });

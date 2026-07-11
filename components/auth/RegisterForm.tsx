@@ -87,7 +87,8 @@ export function RegisterForm({ locale }: RegisterFormProps) {
           name: name.trim(),
           email: email.trim(),
           password,
-          role
+          role,
+          locale
         })
       });
 

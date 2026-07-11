@@ -3161,6 +3161,22 @@
       "subscription_assigned": "تغيّرت خطتك إلى {planCode} (صالحة حتى {periodEnd}).",
       "subscription_expiring": "تنتهي خطة {planCode} في {periodEnd}. جدّدها للحفاظ على حدودك.",
       "subscription_expired": "انتهت خطة {planCode} — انتقل حسابك إلى الخطة المجانية."
+    },
+    "emails": {
+      "product_approved_subject": "تمت الموافقة على منتجك \"{productTitle}\"",
+      "product_approved_body": "خبر سار — اجتاز \"{productTitle}\" المراجعة وهو الآن منشور على DubaiPro.",
+      "product_rejected_subject": "منتجك \"{productTitle}\" يحتاج إلى تعديلات",
+      "product_rejected_body": "لم تتم الموافقة على \"{productTitle}\". السبب: {reason}. عالج الملاحظات وأعد الإرسال من لوحة المورد.",
+      "sample_requested_subject": "طلب عينة جديد لـ \"{productTitle}\"",
+      "sample_requested_body": "طلب {buyerName} عينة من \"{productTitle}\". راجعه في لوحة المورد.",
+      "sample_status_subject": "تحديث طلب العينة: {status}",
+      "sample_status_body": "حالة طلب العينة لمنتج \"{productTitle}\" أصبحت {status}.",
+      "subscription_assigned_subject": "خطتك في DubaiPro الآن {planCode}",
+      "subscription_assigned_body": "تم تغيير اشتراك المورد الخاص بك إلى خطة {planCode} (صالحة حتى {periodEnd}).",
+      "subscription_expiring_subject": "تنتهي خطة {planCode} في {periodEnd}",
+      "subscription_expiring_body": "ينتهي اشتراك {planCode} في {periodEnd}. جدّده للحفاظ على حدودك الحالية — وإلا ينتقل حسابك إلى الخطة المجانية.",
+      "subscription_expired_subject": "انتهت خطة {planCode}",
+      "subscription_expired_body": "انتهى اشتراك {planCode} وانتقل حسابك إلى الخطة المجانية. تبقى المنتجات الحالية ظاهرة؛ وتخضع الإضافات الجديدة لحدود الخطة المجانية."
     }
   }
 }

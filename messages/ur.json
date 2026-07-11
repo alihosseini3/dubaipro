@@ -3161,6 +3161,22 @@
       "subscription_assigned": "آپ کا پلان {planCode} ہو گیا ({periodEnd} تک درست)۔",
       "subscription_expiring": "آپ کا {planCode} پلان {periodEnd} کو ختم ہو رہا ہے۔ حدیں برقرار رکھنے کے لیے تجدید کریں۔",
       "subscription_expired": "آپ کا {planCode} پلان ختم ہو گیا — اکاؤنٹ مفت پلان پر منتقل ہو گیا۔"
+    },
+    "emails": {
+      "product_approved_subject": "آپ کی پروڈکٹ \"{productTitle}\" منظور ہو گئی",
+      "product_approved_body": "خوشخبری — \"{productTitle}\" جائزے میں کامیاب ہو کر اب DubaiPro پر شائع ہے۔",
+      "product_rejected_subject": "آپ کی پروڈکٹ \"{productTitle}\" میں ترمیم درکار ہے",
+      "product_rejected_body": "\"{productTitle}\" منظور نہیں ہوئی۔ وجہ: {reason}۔ مسائل درست کر کے سپلائر پینل سے دوبارہ بھیجیں۔",
+      "sample_requested_subject": "\"{productTitle}\" کے لیے نئی نمونہ درخواست",
+      "sample_requested_body": "{buyerName} نے \"{productTitle}\" کا نمونہ طلب کیا ہے۔ سپلائر پینل میں جائزہ لیں۔",
+      "sample_status_subject": "نمونہ درخواست کی تازہ کاری: {status}",
+      "sample_status_body": "\"{productTitle}\" کے لیے آپ کی نمونہ درخواست اب {status} ہے۔",
+      "subscription_assigned_subject": "آپ کا DubaiPro پلان اب {planCode} ہے",
+      "subscription_assigned_body": "آپ کی سپلائر سبسکرپشن {planCode} پلان میں تبدیل ہو گئی ({periodEnd} تک درست)۔",
+      "subscription_expiring_subject": "آپ کا {planCode} پلان {periodEnd} کو ختم ہو رہا ہے",
+      "subscription_expiring_body": "آپ کی {planCode} سبسکرپشن {periodEnd} کو ختم ہو رہی ہے۔ موجودہ حدیں برقرار رکھنے کے لیے تجدید کریں — ورنہ اکاؤنٹ مفت پلان پر منتقل ہو جائے گا۔",
+      "subscription_expired_subject": "آپ کا {planCode} پلان ختم ہو گیا",
+      "subscription_expired_body": "آپ کی {planCode} سبسکرپشن ختم ہو گئی اور اکاؤنٹ مفت پلان پر منتقل ہو گیا۔ موجودہ مصنوعات نظر آتی رہیں گی؛ نئی تخلیقات مفت پلان کی حدود کے تابع ہوں گی۔"
     }
   }
 }

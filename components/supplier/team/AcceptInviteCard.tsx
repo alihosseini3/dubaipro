@@ -32,7 +32,7 @@ export function AcceptInviteCard({ locale, token }: { locale: string; token: str
     enabled: token.length > 0
   });
   const accept = useApiMutation<
-    { token: string; name?: string; password?: string },
+    { token: string; name?: string; password?: string; locale?: string },
     AcceptResult
   >('/api/supplier/team/accept', 'POST');
 
@@ -60,8 +60,8 @@ export function AcceptInviteCard({ locale, token }: { locale: string; token: str
     try {
       await accept.mutate(
         invite.requiresAccount
-          ? { token, name: name.trim(), password }
-          : { token }
+          ? { token, name: name.trim(), password, locale }
+          : { token, locale }
       );
       router.push(`/${locale}/supplier`);
       router.refresh();

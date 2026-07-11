@@ -14,12 +14,15 @@ import { isPublicSignupRole } from '@/lib/auth/rbac';
 import { createSession } from '@/lib/auth/session';
 import { linkReferralOnSignup, REF_COOKIE } from '@/lib/referral/service';
 import { getSiteUrl } from '@/lib/seo/site';
+import { normalizeLocale } from '@/lib/notifications/email-i18n';
 
 type RegisterBody = {
   name?: unknown;
   email?: unknown;
   password?: unknown;
   role?: unknown;
+  /** UI locale at signup — stored as User.preferredLocale for outbound mail. */
+  locale?: unknown;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -69,7 +72,15 @@ export async function POST(request: Request) {
 
   try {
     const user = await prisma.user.create({
-      data: { name, email, password: passwordHash, role: requestedRole },
+      data: {
+        name,
+        email,
+        password: passwordHash,
+        role: requestedRole,
+        preferredLocale: normalizeLocale(
+          isNonEmptyString(body.locale) ? body.locale : null
+        )
+      },
       select: { id: true, name: true, email: true, role: true }
     });
 
