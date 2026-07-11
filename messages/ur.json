@@ -1661,6 +1661,17 @@
       "prev": "پچھلا",
       "next": "اگلا",
       "pageOf": "صفحہ {page} از {pages}"
+    },
+    "subscriptionInvoices": {
+      "title": "دستی منتقلیاں زیر جائزہ ({count})",
+      "loading": "لوڈ ہو رہا ہے…",
+      "months": "مہینے",
+      "reference": "ٹریکنگ",
+      "noReference": "ابھی جمع نہیں ہوا",
+      "approve": "منظور اور فعال کریں",
+      "reject": "مسترد",
+      "confirmReject": "مسترد کی تصدیق",
+      "reasonPlaceholder": "مسترد کرنے کی وجہ (لازمی)"
     }
   },
   "auth": {
@@ -3007,7 +3018,25 @@
       "current": "موجودہ",
       "free": "مفت",
       "pricePerYear": "{price} {currency} / سال",
-      "upgradeHint": "اپ گریڈ کے لیے DubaiPro ٹیم سے رابطہ کریں — آن لائن ادائیگی جلد آ رہی ہے۔"
+      "upgradeHint": "اپ گریڈ کے لیے DubaiPro ٹیم سے رابطہ کریں — آن لائن ادائیگی جلد آ رہی ہے۔",
+      "upgrade": {
+        "title": "پلان اپ گریڈ کریں",
+        "subtitle": "آن لائن یا بینک ٹرانسفر سے ادائیگی کریں — تصدیق کے بعد پلان خودکار فعال ہو جائے گا۔",
+        "plan": "پلان",
+        "selectPlan": "پلان منتخب کریں…",
+        "method": "ادائیگی کا طریقہ",
+        "selectMethod": "طریقہ منتخب کریں…",
+        "start": "ادائیگی جاری رکھیں",
+        "starting": "شروع ہو رہا ہے…",
+        "transferTo": "رقم اس اکاؤنٹ میں منتقل کریں:",
+        "bank": "بینک",
+        "accountHolder": "اکاؤنٹ ہولڈر",
+        "accountNumber": "اکاؤنٹ / IBAN",
+        "referencePlaceholder": "ٹرانسفر ٹریکنگ نمبر",
+        "submitReference": "جمع کریں",
+        "sending": "بھیجا جا رہا ہے…",
+        "referenceSubmitted": "ٹریکنگ نمبر موصول ہوا — ہماری ٹیم کی تصدیق کے فوراً بعد آپ کا پلان فعال ہو جائے گا۔"
+      }
     }
   },
   "adminSuppliers": {

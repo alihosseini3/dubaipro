@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { SubscriptionsManager } from '@/components/admin/SubscriptionsManager';
+import { SubscriptionInvoicesReview } from '@/components/admin/SubscriptionInvoicesReview';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -16,6 +17,7 @@ export default async function AdminSubscriptionsPage({ params }: Props) {
         <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
       </header>
+      <SubscriptionInvoicesReview />
       <SubscriptionsManager />
     </div>
   );

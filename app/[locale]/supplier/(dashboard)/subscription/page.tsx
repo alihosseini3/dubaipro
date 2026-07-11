@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { requireSupplierPermission } from '@/lib/auth/require-supplier';
 import { getActiveSubscription, listPlans } from '@/lib/subscriptions/service';
 import { getUsageSummary } from '@/lib/subscriptions/limits';
+import { UpgradePanel } from '@/components/supplier/UpgradePanel';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -161,6 +162,9 @@ export default async function SupplierSubscriptionPage({ params }: Props) {
           {t('upgradeHint')}
         </p>
       </div>
+
+      {/* Self-service upgrade (online gateway or manual transfer) */}
+      <UpgradePanel currentPlanId={subscription.plan.id} />
     </div>
   );
 }

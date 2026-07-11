@@ -1663,6 +1663,17 @@
       "prev": "قبلی",
       "next": "بعدی",
       "pageOf": "صفحه {page} از {pages}"
+    },
+    "subscriptionInvoices": {
+      "title": "واریزهای دستی در انتظار بازبینی ({count})",
+      "loading": "در حال بارگذاری…",
+      "months": "ماه",
+      "reference": "پیگیری",
+      "noReference": "هنوز ثبت نشده",
+      "approve": "تایید و فعال‌سازی",
+      "reject": "رد",
+      "confirmReject": "تایید رد",
+      "reasonPlaceholder": "دلیل رد (الزامی)"
     }
   },
   "auth": {
@@ -2094,7 +2105,25 @@
       "current": "فعلی",
       "free": "رایگان",
       "pricePerYear": "{price} {currency} / سال",
-      "upgradeHint": "برای ارتقا با تیم DubaiPro تماس بگیرید — پرداخت آنلاین به‌زودی اضافه می‌شود."
+      "upgradeHint": "برای ارتقا با تیم DubaiPro تماس بگیرید — پرداخت آنلاین به‌زودی اضافه می‌شود.",
+      "upgrade": {
+        "title": "ارتقای پلن",
+        "subtitle": "آنلاین یا با انتقال بانکی پرداخت کنید — پلن پس از تایید پرداخت خودکار فعال می‌شود.",
+        "plan": "پلن",
+        "selectPlan": "انتخاب پلن…",
+        "method": "روش پرداخت",
+        "selectMethod": "انتخاب روش…",
+        "start": "ادامه به پرداخت",
+        "starting": "در حال شروع…",
+        "transferTo": "مبلغ را به این حساب واریز کنید:",
+        "bank": "بانک",
+        "accountHolder": "صاحب حساب",
+        "accountNumber": "شماره حساب / شبا",
+        "referencePlaceholder": "شماره پیگیری واریز",
+        "submitReference": "ثبت",
+        "sending": "در حال ارسال…",
+        "referenceSubmitted": "شماره پیگیری ثبت شد — به‌محض تایید واریز توسط تیم ما، پلن شما فعال می‌شود."
+      }
     }
   },
   "chatHub": {

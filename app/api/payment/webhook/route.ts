@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { applyPaymentOutcome } from '@/lib/payments/service';
 import { getProvider } from '@/lib/payments/registry';
+import { applySubscriptionOutcome } from '@/lib/subscriptions/billing';
 
 export const runtime = 'nodejs';
 /**
@@ -64,7 +65,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    await applyPaymentOutcome(outcome);
+    // Subscription invoices share the gateway (and this webhook) with order
+    // payments — route by which table owns the providerId. Invoice first
+    // (cheap unique lookup); falls through to the order-payment handler.
+    const handledAsSubscription = await applySubscriptionOutcome(outcome);
+    if (!handledAsSubscription) {
+      await applyPaymentOutcome(outcome);
+    }
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error(`[webhook:${providerName}] apply failed:`, err);

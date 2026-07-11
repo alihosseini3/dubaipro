@@ -1661,6 +1661,17 @@
       "prev": "السابق",
       "next": "التالي",
       "pageOf": "صفحة {page} من {pages}"
+    },
+    "subscriptionInvoices": {
+      "title": "تحويلات يدوية بانتظار المراجعة ({count})",
+      "loading": "جارٍ التحميل…",
+      "months": "أشهر",
+      "reference": "التتبع",
+      "noReference": "لم يُرسل بعد",
+      "approve": "اعتماد وتفعيل",
+      "reject": "رفض",
+      "confirmReject": "تأكيد الرفض",
+      "reasonPlaceholder": "سبب الرفض (إلزامي)"
     }
   },
   "auth": {
@@ -3007,7 +3018,25 @@
       "current": "الحالية",
       "free": "مجاني",
       "pricePerYear": "{price} {currency} / سنة",
-      "upgradeHint": "للترقية تواصل مع فريق DubaiPro — الدفع الإلكتروني قادم قريبًا."
+      "upgradeHint": "للترقية تواصل مع فريق DubaiPro — الدفع الإلكتروني قادم قريبًا.",
+      "upgrade": {
+        "title": "ترقية الخطة",
+        "subtitle": "ادفع إلكترونيًا أو بتحويل بنكي — تُفعَّل الخطة تلقائيًا بعد تأكيد الدفع.",
+        "plan": "الخطة",
+        "selectPlan": "اختر خطة…",
+        "method": "طريقة الدفع",
+        "selectMethod": "اختر طريقة…",
+        "start": "المتابعة إلى الدفع",
+        "starting": "جارٍ البدء…",
+        "transferTo": "حوّل المبلغ إلى:",
+        "bank": "البنك",
+        "accountHolder": "صاحب الحساب",
+        "accountNumber": "الحساب / IBAN",
+        "referencePlaceholder": "رقم تتبع التحويل",
+        "submitReference": "إرسال",
+        "sending": "جارٍ الإرسال…",
+        "referenceSubmitted": "تم استلام رقم التتبع — تُفعَّل خطتك فور تأكيد فريقنا للتحويل."
+      }
     }
   },
   "adminSuppliers": {

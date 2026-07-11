@@ -119,15 +119,17 @@ export async function getActiveSubscription(supplierId: string) {
 }
 
 /**
- * Admin-assigned plan change. Cancels the current ACTIVE/TRIAL row and
- * creates the new one atomically; notifies the org.
+ * Core plan activation — shared by the admin manual assignment and the
+ * paid-checkout webhook (lib/subscriptions/billing.ts). Cancels the current
+ * ACTIVE/TRIAL row and creates the new one atomically; notifies the org.
  */
-export async function assignPlan(params: {
-  adminId: string;
+export async function activatePlan(params: {
   supplierId: string;
   planId: string;
   /** Override the plan's interval; ignored for FREE (never expires). */
   periodMonths?: number;
+  /** Admin id for manual assignment; null for gateway-paid activations. */
+  assignedById?: string | null;
 }) {
   const [supplier, plan] = await Promise.all([
     prisma.supplier.findUnique({
@@ -160,7 +162,7 @@ export async function assignPlan(params: {
         supplierId: params.supplierId,
         planId: params.planId,
         currentPeriodEnd: periodEnd,
-        assignedById: params.adminId
+        assignedById: params.assignedById ?? null
       },
       select: SUBSCRIPTION_SELECT
     })
@@ -181,6 +183,21 @@ export async function assignPlan(params: {
     .catch(() => {});
 
   return subscription;
+}
+
+/** Admin-assigned plan change (billing v1 manual path). */
+export async function assignPlan(params: {
+  adminId: string;
+  supplierId: string;
+  planId: string;
+  periodMonths?: number;
+}) {
+  return activatePlan({
+    supplierId: params.supplierId,
+    planId: params.planId,
+    periodMonths: params.periodMonths,
+    assignedById: params.adminId
+  });
 }
 
 /* ─── Plan CRUD (admin) ──────────────────────────────────────────────────── */

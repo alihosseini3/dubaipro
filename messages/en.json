@@ -1662,6 +1662,17 @@
       "prev": "Previous",
       "next": "Next",
       "pageOf": "Page {page} of {pages}"
+    },
+    "subscriptionInvoices": {
+      "title": "Manual transfers awaiting review ({count})",
+      "loading": "Loading…",
+      "months": "months",
+      "reference": "Reference",
+      "noReference": "not submitted yet",
+      "approve": "Approve & activate",
+      "reject": "Reject",
+      "confirmReject": "Confirm reject",
+      "reasonPlaceholder": "Rejection reason (required)"
     }
   },
   "auth": {
@@ -2111,7 +2122,25 @@
       "current": "Current",
       "free": "Free",
       "pricePerYear": "{price} {currency} / year",
-      "upgradeHint": "To upgrade, contact the DubaiPro team — online payment is coming soon."
+      "upgradeHint": "To upgrade, contact the DubaiPro team — online payment is coming soon.",
+      "upgrade": {
+        "title": "Upgrade your plan",
+        "subtitle": "Pay online or by bank transfer — the plan activates automatically after payment is confirmed.",
+        "plan": "Plan",
+        "selectPlan": "Select plan…",
+        "method": "Payment method",
+        "selectMethod": "Select method…",
+        "start": "Continue to payment",
+        "starting": "Starting…",
+        "transferTo": "Transfer the amount to:",
+        "bank": "Bank",
+        "accountHolder": "Account holder",
+        "accountNumber": "Account / IBAN",
+        "referencePlaceholder": "Transfer tracking number",
+        "submitReference": "Submit",
+        "sending": "Sending…",
+        "referenceSubmitted": "Reference received — your plan activates as soon as our team confirms the transfer."
+      }
     }
   },
   "whatsapp": {
