@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import {
   computeDiscount,
   findAutoApplyCoupon,
@@ -120,8 +121,9 @@ export async function addToCart(
 ): Promise<CartDTO> {
   const qty = normalizeQuantity(quantity);
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  // Only approved+published products can enter a cart.
+  const product = await prisma.product.findFirst({
+    where: { id: productId, ...PUBLIC_PRODUCT_WHERE },
     select: { id: true, stock: true }
   });
   if (!product) {

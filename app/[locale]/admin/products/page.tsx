@@ -18,6 +18,7 @@ type Row = {
   currency: string;
   stock: number;
   isB2B: boolean;
+  status: string;
 };
 
 export default async function AdminProductsPage({ params }: Props) {
@@ -42,7 +43,8 @@ export default async function AdminProductsPage({ params }: Props) {
     price: p.price.toString(),
     currency: p.currency,
     stock: p.stock,
-    isB2B: p.isB2B
+    isB2B: p.isB2B,
+    status: p.status
   }));
 
   const columns: Column<Row>[] = [
@@ -64,6 +66,11 @@ export default async function AdminProductsPage({ params }: Props) {
       render: (r) => `${r.price} ${r.currency}`
     },
     { key: 'stock', header: t('headerStock'), render: (r) => r.stock },
+    {
+      key: 'status',
+      header: t('headerStatus'),
+      render: (r) => <StatusBadge status={r.status} />
+    },
     {
       key: 'b2b',
       header: t('headerB2B'),

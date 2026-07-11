@@ -75,7 +75,12 @@ export async function createSupplier(input: CreateSupplierInput) {
       name: input.name.trim(),
       country: input.country.trim(),
       phone: input.phone ?? null,
-      slug
+      slug,
+      // Every org has exactly one OWNER membership from birth — the team
+      // feature (lib/auth/require-supplier.ts) resolves access through it.
+      members: {
+        create: { userId: input.userId, role: 'OWNER' }
+      }
     }
   });
 }

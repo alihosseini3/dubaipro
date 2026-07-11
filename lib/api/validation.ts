@@ -20,14 +20,7 @@ export function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
 }
 
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
+export { slugify } from '@/lib/utils/slug';
 
 export async function parseJsonBody<T = unknown>(
   request: Request

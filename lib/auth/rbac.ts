@@ -13,10 +13,15 @@ import type { SessionUser } from './session';
  * Authoritative role set (must stay in sync with `UserRole` in
  * `prisma/schema.prisma`):
  *
+ * - `SUPER_ADMIN` — Platform owner tier (everything ADMIN can, plus
+ *                   oversight/destructive permissions — lib/auth/permissions.ts).
  * - `ADMIN`    — Staff with full backend access.
  * - `CUSTOMER` — Default for self-registered buyers.
- * - `SELLER`   — Individual seller (direct-from-producer buyer persona).
- * - `SUPPLIER` — Verified B2B supplier with a linked `Supplier` profile.
+ * - `SELLER`   — LEGACY value (no longer offered at signup; treated as a
+ *                buyer everywhere). Never removed — PG enum values are
+ *                append-only.
+ * - `SUPPLIER` — B2B supplier org member (owner or employee); fine-grained
+ *                capabilities come from `SupplierMember.role`.
  */
 
 export { UserRole } from '@prisma/client';
@@ -24,7 +29,6 @@ export { UserRole } from '@prisma/client';
 /** Roles a user may self-select during public registration. */
 export const PUBLIC_SIGNUP_ROLES = [
   UserRole.CUSTOMER,
-  UserRole.SELLER,
   UserRole.SUPPLIER
 ] as const;
 export type PublicSignupRole = (typeof PUBLIC_SIGNUP_ROLES)[number];
@@ -55,7 +59,7 @@ export function hasRole(
 }
 
 export const isAdmin = (u: SessionUser | null | undefined): boolean =>
-  hasRole(u, UserRole.ADMIN);
+  hasRole(u, UserRole.ADMIN, UserRole.SUPER_ADMIN);
 
 export const isSupplier = (u: SessionUser | null | undefined): boolean =>
   hasRole(u, UserRole.SUPPLIER);

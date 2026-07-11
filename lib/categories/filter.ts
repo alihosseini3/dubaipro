@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * Filter state — every filter the storefront understands.
@@ -201,6 +202,8 @@ export function buildWhere(
   }
 
   return {
+    // Storefront category pages never show unapproved/unpublished products.
+    ...PUBLIC_PRODUCT_WHERE,
     category: { slug: categorySlug },
     ...(and.length > 0 && { AND: and }),
   };

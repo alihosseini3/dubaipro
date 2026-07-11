@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 type Props = {
   currentProductId: string;
@@ -30,6 +31,7 @@ export async function RelatedProducts({
 
   const rows = await prisma.product.findMany({
     where: {
+      ...PUBLIC_PRODUCT_WHERE,
       id: { not: currentProductId },
       ...(categoryId ? { categoryId } : {})
     },

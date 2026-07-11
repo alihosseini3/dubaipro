@@ -29,7 +29,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  *
  * Role assignment rules (enforced centrally via `isPublicSignupRole`):
  * - Default to `CUSTOMER` when the caller omits `role`.
- * - Accept `CUSTOMER`, `SELLER`, and `SUPPLIER` when explicitly requested.
+ * - Accept `CUSTOMER` and `SUPPLIER` when explicitly requested.
  * - Reject `ADMIN` — privilege escalation through the public API is
  *   structurally impossible because `ADMIN` is not in the public whitelist.
  *
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     if (isPublicSignupRole(body.role)) {
       requestedRole = body.role;
     } else {
-      errors.role = 'role must be CUSTOMER, SELLER, or SUPPLIER';
+      errors.role = 'role must be CUSTOMER or SUPPLIER';
     }
   }
 

@@ -178,6 +178,13 @@ async function createAccount(
       },
     });
 
+    // OWNER team membership — the access path used by require-supplier.
+    // Separate create (cross-linking two nested creates isn't possible);
+    // resolveMembership self-heals if this ever races.
+    await prisma.supplierMember.create({
+      data: { supplierId: user.supplier!.id, userId: user.id, role: 'OWNER' },
+    });
+
     const sessionUser: SessionUser = {
       id: user.id,
       name: user.name,
@@ -215,6 +222,9 @@ async function ensureSupplierForUser(user: SessionUser): Promise<string> {
       slug,
       companyName: user.name,
       onboardingStatus: 'DRAFT',
+      members: {
+        create: { userId: user.id, role: 'OWNER' }
+      }
     },
     select: { id: true },
   });

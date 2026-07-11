@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 
 import { prisma } from '@/lib/prisma';
 
@@ -9,10 +10,15 @@ import { prisma } from '@/lib/prisma';
  * read directly from Prisma instead of going through `/api/...` so the
  * sitemap stays cheap and side-effect free.
  *
- * `listCategories` is wrapped in `react.cache()` so the header (which
- * needs categories in both `MainHeader` and `NavBar`) doesn't hit the
- * DB twice per request.
+ * `listCategories` is cached at two layers:
+ *   - `unstable_cache` tag "categories": cross-request data cache, busted by
+ *     `revalidateTag('categories')` in the admin category mutations — the
+ *     category tree renders in the header of EVERY page, so this removes a
+ *     DB query from nearly every request.
+ *   - `react.cache()`: request-level dedupe (MainHeader + NavBar both call it).
  */
+
+export const CATEGORIES_CACHE_TAG = 'categories';
 
 export type CategoryNode = {
   id: string;
@@ -48,27 +54,33 @@ const CATEGORY_SELECT = {
   _count: { select: { products: true } },
 } as const;
 
-export const listCategories = cache(async (): Promise<CategoryNode[]> => {
-  const rows = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    select: CATEGORY_SELECT,
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    slug: r.slug,
-    parentId: r.parentId,
-    icon: r.icon,
-    imageUrl: r.imageUrl,
-    description: r.description,
-    metaTitle: r.metaTitle,
-    metaDescription: r.metaDescription,
-    isActive: r.isActive,
-    sortOrder: r.sortOrder,
-    productCount: r._count.products,
-  }));
-});
+const listCategoriesCached = unstable_cache(
+  async (): Promise<CategoryNode[]> => {
+    const rows = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: CATEGORY_SELECT,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      parentId: r.parentId,
+      icon: r.icon,
+      imageUrl: r.imageUrl,
+      description: r.description,
+      metaTitle: r.metaTitle,
+      metaDescription: r.metaDescription,
+      isActive: r.isActive,
+      sortOrder: r.sortOrder,
+      productCount: r._count.products,
+    }));
+  },
+  ['list-categories'],
+  { tags: [CATEGORIES_CACHE_TAG], revalidate: 300 }
+);
+
+export const listCategories = cache(listCategoriesCached);
 
 export async function getCategoryBySlug(
   slug: string

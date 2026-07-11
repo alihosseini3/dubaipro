@@ -11,6 +11,11 @@ enum UserRole {
   CUSTOMER
   SELLER
   SUPPLIER
+  /// Platform owner tier: everything ADMIN can do plus oversight/destructive
+  /// permissions (see lib/auth/permissions.ts). Added additively — enum
+  /// values are never renamed or removed (SELLER stays as a legacy value
+  /// mapped to the buyer permission set in code).
+  SUPER_ADMIN
 }
 
 enum OrderStatus {
@@ -125,21 +130,21 @@ enum SupplierDocumentType {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String      @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String      @unique
   password     String
-  role         UserRole @default(CUSTOMER)
+  role         UserRole    @default(CUSTOMER)
   /// Top-level account intent chosen at registration. `UserRole` stays the
   /// authoritative permission boundary; this is descriptive metadata.
   accountType  AccountType @default(BUYER)
   /// Account mobile number. Optional for legacy/buyer accounts; required &
   /// unique for supplier self-registration (enforced in the service layer).
-  phone        String?  @unique
+  phone        String?     @unique
   /// Public-facing affiliate code. Lazily generated on first /account/referral
   /// visit (or on demand). Indexed unique so we can resolve by `?ref=`.
-  referralCode String?  @unique
-  createdAt    DateTime @default(now())
+  referralCode String?     @unique
+  createdAt    DateTime    @default(now())
 
   supplier               Supplier?
   orders                 Order[]
@@ -147,8 +152,6 @@ model User {
   addresses              Address[]
   wishlist               Wishlist?
   reviews                Review[]
-  customerConversations  Conversation[]       @relation("CustomerConversations")
-  sellerConversations    Conversation[]       @relation("SellerConversations")
   messages               Message[]
   passwordResetTokens    PasswordResetToken[]
   repliedContactMessages ContactMessage[]
@@ -162,12 +165,17 @@ model User {
   auctionWins            Auction[]            @relation("AuctionWinner")
   auctionWatches         AuctionWatch[]
   uploadedMedia          MediaAsset[]
-  b2bInquiries           B2BInquiry[] // Alibaba-style product inquiries
   /// Suppliers this user follows (one row per follow). Cascade-deleted
   /// with the user. The reverse counter lives on `Supplier.followerCount`.
   followedSuppliers      SupplierFollower[]
   /// Reviews this user wrote about suppliers (max 1 per supplier).
   supplierReviewsWritten SupplierReview[]
+  /// Team membership inside a supplier org (owner or employee). A user
+  /// belongs to at most one supplier org — hence 1:1, not a list.
+  supplierMembership     SupplierMember?
+  conversationMembers    ConversationMember[]
+  sampleRequests         SampleRequest[]
+  notifications          Notification[]
   /// Timestamp the user accepted the marketing consent banner. Null
   /// means "unknown / not asked". Server-side tracking checks this to
   /// honour GDPR even outside the browser cookie context.
@@ -289,11 +297,11 @@ model Supplier {
   /// Additional business contact numbers captured during onboarding
   /// (Step 1). The primary login mobile lives on `User.phone`; this array
   /// holds the full ordered set (including the primary) for display.
-  phones             String[] @default([])
+  phones             String[]                 @default([])
   /// Emirate / state (Step 3). `country` + `city` already exist above.
   emirate            String?
   /// Free-form street address (Step 3).
-  address            String? @db.Text
+  address            String?                  @db.Text
   /// Geo-coordinates reserved for future Google Maps integration. Null
   /// until the address is geocoded.
   latitude           Float?
@@ -329,6 +337,11 @@ model Supplier {
   secondaryCategories SupplierCategory[]
   documents           SupplierDocument[]
   verifications       SupplierVerification[]
+  members             SupplierMember[]
+  invites             SupplierInvite[]
+  conversations       Conversation[]
+  sampleRequests      SampleRequest[]
+  subscriptions       SupplierSubscription[]
 
   @@index([country])
   @@index([verified])
@@ -551,47 +564,66 @@ model Brand {
   @@index([name])
 }
 
+/// Moderation lifecycle of a product. Public storefront visibility requires
+/// BOTH `status = APPROVED` AND `isPublished = true` (isPublished stays the
+/// supplier's own on/off switch; status is the platform's review decision).
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
 model Product {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   supplierId      String
   categoryId      String
   brandId         String?
   title           String
-  slug            String   @unique
-  description     String   @db.Text
-  price           Decimal  @db.Decimal(12, 2)
-  compareAtPrice  Decimal? @db.Decimal(12, 2)
-  currency        String   @default("USD") @db.VarChar(3)
-  stock           Int      @default(0)
-  isB2B           Boolean  @default(false)
-  isPublished     Boolean  @default(false) // Supplier can control visibility
+  slug            String        @unique
+  description     String        @db.Text
+  price           Decimal       @db.Decimal(12, 2)
+  compareAtPrice  Decimal?      @db.Decimal(12, 2)
+  currency        String        @default("USD") @db.VarChar(3)
+  stock           Int           @default(0)
+  isB2B           Boolean       @default(false)
+  isPublished     Boolean       @default(false) // Supplier can control visibility
+  // --- Review workflow (see lib/products/service.ts for the transition matrix) ---
+  status          ProductStatus @default(DRAFT)
+  /// Set when the supplier submits for review; drives review-queue ordering.
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  /// Reviewing admin id. No FK — historical record survives admin deletion.
+  reviewedById    String?
+  /// Required on REJECTED; shown to the supplier in the status panel.
+  rejectionReason String?       @db.Text
   imageUrl        String?
   images          Json? // Array of {url, alt, order}
   videoUrls       Json? // Array of video URLs (Alibaba-style product videos)
   // --- B2B / Alibaba-style fields ---
-  moq             Int?     @default(1) // Minimum Order Quantity
-  moqUnit         String?  @default("pieces") // Unit for MOQ
-  samplePrice     Decimal? @db.Decimal(12, 2) // Price for sample orders
-  sampleMOQ       Int?     @default(1) // MOQ for samples
-  tradeTerms      String?  @db.VarChar(50) // FOB, CIF, EXW, DDP, etc.
-  originCountry   String?  @db.VarChar(100) // Country of origin (e.g., "China", "UAE")
-  leadTimeDays    Int?     // Production lead time in days
-  warrantyYears   Int?     // Warranty period
+  moq             Int?          @default(1) // Minimum Order Quantity
+  moqUnit         String?       @default("pieces") // Unit for MOQ
+  samplePrice     Decimal?      @db.Decimal(12, 2) // Price for sample orders
+  sampleMOQ       Int?          @default(1) // MOQ for samples
+  tradeTerms      String?       @db.VarChar(50) // FOB, CIF, EXW, DDP, etc.
+  originCountry   String?       @db.VarChar(100) // Country of origin (e.g., "China", "UAE")
+  leadTimeDays    Int? // Production lead time in days
+  warrantyYears   Int? // Warranty period
   customization   Json? // {isAvailable: boolean, options: string[], minOrder: number}
   certifications  Json? // Array of {name, imageUrl, standard}
-  tierPricing     Json? // Array of {minQty, maxQty, price} for volume discounts
   attributes      Json? // Key-value attributes for specifications table
   // Shipping metadata (all nullable → falls back to global defaults).
   weight          Float? // kg
   length          Float? // cm
   width           Float? // cm
   height          Float? // cm
-  shippingClass   String?  @default("normal") @db.VarChar(32)
+  shippingClass   String?       @default("normal") @db.VarChar(32)
   // --- SEO overrides (admin-controlled). Fall back to title/description when null. ---
-  metaTitle       String?  @db.VarChar(70)
-  metaDescription String?  @db.VarChar(200)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  metaTitle       String?       @db.VarChar(70)
+  metaDescription String?       @db.VarChar(200)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   supplier        Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   category        Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -602,7 +634,10 @@ model Product {
   reviews         Review[]
   coupons         Coupon[]
   attributeValues ProductAttributeValue[]
-  b2bInquiries    B2BInquiry[] // Alibaba-style "Send Inquiry" feature
+  priceTiers      ProductPriceTier[]
+  variants        ProductVariant[]
+  conversations   Conversation[]
+  sampleRequests  SampleRequest[]
 
   @@index([supplierId])
   @@index([categoryId])
@@ -610,48 +645,20 @@ model Product {
   @@index([slug])
   @@index([isB2B])
   @@index([isPublished])
+  /// Review queue: PENDING_REVIEW ordered by submission time.
+  @@index([status, submittedAt])
+  /// Supplier dashboard: own products filtered by status.
+  @@index([supplierId, status])
   @@index([createdAt])
   @@index([price])
   @@index([moq])
   /// Powers the storefront search ("title contains") + autocomplete.
-  /// Postgres uses this btree index for prefix queries and pg_trgm for
-  /// substring matches if the extension is enabled later.
+  /// Btree for prefix/order; the trgm GIN below serves `%substring%`.
   @@index([title])
-}
-
-/// Alibaba-style B2B inquiry system — buyers can send inquiries to suppliers
-model B2BInquiry {
-  id          String   @id @default(cuid())
-  productId   String
-  buyerId     String
-  quantity    Int
-  unit        String   @default("pieces")
-  message     String   @db.Text
-  status      String   @default("PENDING") // PENDING, REPLIED, CLOSED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyer       User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  replies     B2BInquiryReply[]
-
-  @@index([productId])
-  @@index([buyerId])
-  @@index([status])
-}
-
-model B2BInquiryReply {
-  id          String   @id @default(cuid())
-  inquiryId   String
-  senderId    String   // Can be buyer or supplier
-  senderRole  String   // BUYER or SUPPLIER
-  message     String   @db.Text
-  attachmentUrl String?
-  createdAt   DateTime @default(now())
-
-  inquiry     B2BInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
-
-  @@index([inquiryId])
+  /// pg_trgm substring search (extension created in the pg_trgm migration).
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_title_trgm_idx")
+  /// Keyset (cursor) pagination for the newest-first feeds.
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Product_createdAt_id_idx")
 }
 
 model Order {
@@ -986,35 +993,147 @@ model WishlistItem {
   @@index([wishlistId, createdAt])
 }
 
-model Conversation {
-  id         String   @id @default(cuid())
-  customerId String
-  sellerId   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+/// What started the conversation. DIRECT = buyer contacted the supplier,
+/// INQUIRY = product "Send inquiry", SAMPLE = linked to a SampleRequest,
+/// SUPPORT = platform admin ↔ user (contact-form replies).
+enum ConversationType {
+  DIRECT
+  INQUIRY
+  SAMPLE
+  SUPPORT
+}
 
-  customer       User             @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade)
-  seller         User             @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
+model Conversation {
+  id                 String           @id @default(cuid())
+  type               ConversationType @default(DIRECT)
+  /// Short topic line, e.g. the product title for INQUIRY/SAMPLE threads.
+  subject            String?          @db.VarChar(200)
+  /// Org context: which supplier organisation this thread belongs to.
+  /// Null for SUPPORT threads. Org-side access resolves through
+  /// SupplierMember + this pointer (see lib/messaging/service.ts).
+  supplierId         String?
+  /// Product being discussed, when the thread started from a product page.
+  productId          String?
+  /// Denormalised for inbox ordering/previews — updated in the same
+  /// transaction as every message insert.
+  lastMessageAt      DateTime         @default(now())
+  lastMessagePreview String?          @db.VarChar(200)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  supplier       Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  product        Product?             @relation(fields: [productId], references: [id], onDelete: SetNull)
+  members        ConversationMember[]
   messages       Message[]
   contactMessage ContactMessage[]
+  sampleRequests SampleRequest[]
 
-  @@unique([customerId, sellerId])
-  @@index([customerId, updatedAt])
-  @@index([sellerId, updatedAt])
+  @@index([supplierId, lastMessageAt])
+  @@index([productId])
+  @@index([type, lastMessageAt])
+}
+
+/// Per-user view of a conversation: unread counter, archive/mute flags.
+/// The unread badge is O(1) per thread; the global badge is a SUM over the
+/// [userId, isArchived, unreadCount] index — bounded by conversations per
+/// user, never by message volume.
+model ConversationMember {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  /// BUYER | SUPPLIER | ADMIN — display-side hint, not a permission.
+  memberRole     String    @default("PARTICIPANT") @db.VarChar(20)
+  unreadCount    Int       @default(0)
+  lastReadAt     DateTime?
+  isArchived     Boolean   @default(false)
+  isMuted        Boolean   @default(false)
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, isArchived, unreadCount])
 }
 
 model Message {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   conversationId String
   senderId       String
-  content        String   @db.Text
-  createdAt      DateTime @default(now())
+  content        String    @db.Text
+  /// TEXT | SYSTEM (status updates, e.g. sample accepted) | ATTACHMENT.
+  type           String    @default("TEXT") @db.VarChar(20)
+  editedAt       DateTime?
+  /// Soft delete — the row stays for the other party's context.
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments  MessageAttachment[]
+
+  /// Full-text search over content. GENERATED ALWAYS column — created with
+  /// raw SQL in the messaging_platform migration; mirrored here so
+  /// `migrate diff` stays clean.
+  searchVector Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, COALESCE(content, ''::text))"))
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([searchVector], type: Gin)
+}
+
+/// File attached to a message. The binary lives in the media library
+/// (MediaAsset) when uploaded through us; url/name/size are denormalised
+/// so threads render without joins into the media tables.
+model MessageAttachment {
+  id           String  @id @default(cuid())
+  messageId    String
+  mediaAssetId String?
+  url          String  @db.VarChar(2048)
+  fileName     String  @db.VarChar(255)
+  mimeType     String  @db.VarChar(100)
+  sizeBytes    Int     @default(0)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+enum SampleRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  SHIPPED
+  CLOSED
+}
+
+/// Buyer asks the supplier for a product sample. Follow-up communication
+/// happens in the linked SAMPLE conversation; status changes post SYSTEM
+/// messages there.
+model SampleRequest {
+  id             String              @id @default(cuid())
+  productId      String
+  buyerId        String
+  /// Denormalised org pointer — powers the supplier sample queue without
+  /// joining through Product.
+  supplierId     String
+  quantity       Int                 @default(1)
+  message        String?             @db.Text
+  /// Free-form shipping snapshot {name, phone, country, city, address}.
+  shippingInfo   Json?
+  status         SampleRequestStatus @default(PENDING)
+  conversationId String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer        User          @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  supplier     Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId, status, createdAt])
+  @@index([buyerId, createdAt])
+  @@index([productId])
 }
 
 model WhatsAppClick {
@@ -1937,13 +2056,13 @@ model MediaAsset {
 
   // ── P1 additions (2026-06) ──────────────────────────────────────────
   /// Processing state: pending | processing | done | failed.
-  processingStatus  String   @default("done") @db.VarChar(20)
+  processingStatus String  @default("done") @db.VarChar(20)
   /// Storage backend: local | s3 | r2 | cloudflare.
-  storageProvider   String   @default("local") @db.VarChar(20)
+  storageProvider  String  @default("local") @db.VarChar(20)
   /// URL to the original unprocessed file (stored for reprocessing).
-  originalUrl       String?  @db.VarChar(2048)
+  originalUrl      String? @db.VarChar(2048)
   /// Full EXIF metadata extracted at upload time.
-  exifData          Json?
+  exifData         Json?
 
   uploadedBy    User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
   variants      MediaVariant[]
@@ -2132,21 +2251,238 @@ model ProductAttributeValue {
 /// Singleton row (id = "singleton"). DB values override env vars at runtime.
 /// API keys are stored as-is (admin-only access, same pattern as PaymentSettings).
 model MediaSettings {
-  id            String   @id @default("singleton")
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default("singleton")
+  updatedAt DateTime @updatedAt
 
   /// AI Vision provider: openai | gemini | claude | null (disabled)
-  aiProvider    String?  @db.VarChar(20)
+  aiProvider     String? @db.VarChar(20)
   /// Provider API key (overrides MEDIA_AI_API_KEY env var)
-  aiApiKey      String?  @db.VarChar(500)
+  aiApiKey       String? @db.VarChar(500)
   /// Model override, e.g. gpt-4o, gemini-1.5-flash, claude-3-haiku-20240307
-  aiModel       String?  @db.VarChar(100)
+  aiModel        String? @db.VarChar(100)
   /// Custom base URL for Azure OpenAI, Ollama, or self-hosted proxies
-  aiBaseUrl     String?  @db.VarChar(500)
+  aiBaseUrl      String? @db.VarChar(500)
   /// Request timeout in milliseconds (default 10 000)
-  aiTimeoutMs   Int      @default(10000)
+  aiTimeoutMs    Int     @default(10000)
   /// Automatically run AI metadata generation on new image uploads
   aiAutoGenerate Boolean @default(false)
   /// Enable web search grounding (Gemini google_search / OpenAI Responses web_search)
   aiUseWebSearch Boolean @default(false)
+}
+
+/// Central append-only audit trail for every sensitive action across the platform.
+/// Deliberately FK-free so records survive entity deletion and the table can be
+/// partitioned/purged independently. Domain-specific logs (SupplierVerificationLog,
+/// AutomationLog, CurrencyRateHistory) remain the detailed source; new writes there
+/// should also mirror a row here via lib/audit/service.ts.
+model AuditLog {
+  id         String   @id @default(cuid())
+  /// Acting user id; null = SYSTEM (cron, automation). No FK — historical record.
+  actorId    String?
+  /// Dot-scoped action code, e.g. "product.approve", "supplier.member.invite".
+  action     String   @db.VarChar(80)
+  /// Entity kind the action targeted, e.g. "Product", "Supplier", "Conversation".
+  entityType String   @db.VarChar(40)
+  entityId   String?
+  /// Owning supplier org, when applicable — powers the supplier-scoped activity view.
+  supplierId String?
+  /// { before, after } snapshot of the changed fields only.
+  diff       Json?
+  /// Request context: { ip, userAgent, requestId, ... }.
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([supplierId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  /// Keyset (cursor) pagination for the admin audit viewer.
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "AuditLog_createdAt_id_idx")
+}
+
+/// Employee roles inside a supplier org. Global `UserRole` stays the coarse
+/// boundary (middleware/JWT); this enum drives the fine-grained permission
+/// matrix in lib/auth/permissions.ts.
+enum SupplierMemberRole {
+  OWNER
+  MANAGER
+  PRODUCT_EDITOR
+  MESSAGING_AGENT
+  ANALYST
+}
+
+/// Team membership: links a User to the supplier org they work for.
+/// Every Supplier has exactly one OWNER row (created at registration or by
+/// the owner backfill); employees are added via SupplierInvite.
+model SupplierMember {
+  id          String             @id @default(cuid())
+  supplierId  String
+  /// Unique across the whole table — a user belongs to at most one org.
+  userId      String             @unique
+  role        SupplierMemberRole @default(OWNER)
+  /// Optional per-member permission overrides (adds to the role's set).
+  permissions String[]           @default([])
+  /// Member (usually the owner) who sent the invite. No FK — historical.
+  invitedById String?
+  /// Deactivated members keep their row (audit trail) but lose all access.
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, userId])
+  @@index([supplierId, isActive])
+}
+
+/// Pending team invitation. Token handling mirrors PasswordResetToken:
+/// only the SHA-256 hash is stored; the raw token is emailed once.
+/// Accepting creates the SupplierMember row and stamps `acceptedAt`.
+model SupplierInvite {
+  id          String             @id @default(cuid())
+  supplierId  String
+  email       String
+  role        SupplierMemberRole
+  tokenHash   String             @unique
+  expiresAt   DateTime
+  invitedById String
+  acceptedAt  DateTime?
+  createdAt   DateTime           @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, email])
+  @@index([supplierId, createdAt])
+}
+
+/// Relational volume-pricing tier — replaces the legacy `Product.tierPricing`
+/// Json column (kept as a read fallback until the Phase-7 cleanup drops it).
+/// Tiers are authored in one currency per row; display conversion to the
+/// viewer's currency goes through lib/currency/service.ts as usual.
+model ProductPriceTier {
+  id           String  @id @default(cuid())
+  productId    String
+  currency     String  @default("USD") @db.VarChar(3)
+  minQty       Int
+  /// Null = "this quantity and above" (must be the last tier of a currency).
+  maxQty       Int?
+  unitPrice    Decimal @db.Decimal(12, 2)
+  /// Optional per-tier production lead time override.
+  leadTimeDays Int?
+  sortOrder    Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, currency, minQty])
+  @@index([productId])
+}
+
+/// Flat product variant with a Json options bag ({"Color":"Red","Size":"XL"}).
+/// Deliberately NOT a relational Option/OptionValue tree: B2B orders are
+/// negotiated via contact-supplier, so variants are descriptive, not
+/// cart-SKU-critical.
+model ProductVariant {
+  id           String   @id @default(cuid())
+  productId    String
+  sku          String?
+  /// Display name, e.g. "Red / XL". Localized via the Translation cache.
+  name         String
+  options      Json
+  /// Null = inherits the product base price / tier pricing.
+  unitPrice    Decimal? @db.Decimal(12, 2)
+  moq          Int?
+  stock        Int      @default(0)
+  imageUrl     String?  @db.VarChar(2048)
+  /// Optional link into the media library for managed images.
+  mediaAssetId String?
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sku])
+  @@index([productId, isActive])
+}
+
+/// In-app notification. Stores the template KEY + params (never rendered
+/// text) so the UI renders in the viewer's current locale via the
+/// `notifications.items.*` message keys. `channels` records per-channel
+/// dispatch outcome, e.g. {"inApp":true,"email":"sent","whatsapp":"skipped"}.
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  /// Dot-scoped template key, e.g. "product.approved", "message.new".
+  templateKey String    @db.VarChar(80)
+  params      Json?
+  /// Locale-less path (e.g. "/supplier/products/x/edit") — the client
+  /// prefixes the active locale.
+  link        String?   @db.VarChar(2048)
+  readAt      DateTime?
+  channels    Json?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+/// Supplier subscription tier (FREE / VERIFIED_PLUS / GOLD, extensible).
+/// Limit columns are explicit (not a Json bag) so hot-path checks in
+/// lib/subscriptions/limits.ts stay typed and cheap. Null limit = unlimited.
+model SubscriptionPlan {
+  id                  String   @id @default(cuid())
+  code                String   @unique @db.VarChar(40)
+  /// Localised display names {en, fa, ar, ur} — same pattern as
+  /// AttributeDefinition.nameTranslations.
+  nameTranslations    Json
+  price               Decimal  @default(0) @db.Decimal(12, 2)
+  currency            String   @default("USD") @db.VarChar(3)
+  intervalMonths      Int      @default(12)
+  maxProducts         Int?
+  maxEmployees        Int?
+  maxImagesPerProduct Int?
+  /// Marketing/feature flags, e.g. {"prioritySearch": true, "badge": "GOLD"}.
+  features            Json?
+  isActive            Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  subscriptions SupplierSubscription[]
+}
+
+/// A supplier's plan assignment. History is append-only: changing plans
+/// CANCELs the current row and creates a new ACTIVE one. Invariant
+/// (service-enforced + seed reconciliation): every supplier has exactly one
+/// ACTIVE/TRIAL subscription at any time.
+/// Billing v1 is admin-assigned (assignedById); gateway checkout reuses the
+/// existing Payment model in a later phase.
+model SupplierSubscription {
+  id                String             @id @default(cuid())
+  supplierId        String
+  planId            String
+  status            SubscriptionStatus @default(ACTIVE)
+  startedAt         DateTime           @default(now())
+  /// Null = never expires (FREE).
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean            @default(false)
+  /// Admin who assigned it; null = system (seed, auto-downgrade).
+  assignedById      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  supplier Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([supplierId, status])
+  @@index([status, currentPeriodEnd])
 }

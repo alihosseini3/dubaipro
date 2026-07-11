@@ -60,7 +60,7 @@ export default async function middleware(request: NextRequest) {
         if (hasInvalidToken) redirect.cookies.delete(AUTH_COOKIE_NAME);
         return redirect;
       }
-    } else if (payload.role !== 'ADMIN') {
+    } else if (payload.role !== 'ADMIN' && payload.role !== 'SUPER_ADMIN') {
       const redirect = safeRedirect(request, `/${locale}`);
       if (redirect) return redirect;
     }
@@ -75,7 +75,9 @@ export default async function middleware(request: NextRequest) {
     const fromParam = request.nextUrl.searchParams.get('from');
     if (!fromParam) {
       const target =
-        payload.role === 'ADMIN' ? `/${locale}/admin` : `/${locale}`;
+        payload.role === 'ADMIN' || payload.role === 'SUPER_ADMIN'
+          ? `/${locale}/admin`
+          : `/${locale}`;
       const redirect = safeRedirect(request, target);
       if (redirect) return redirect;
     }

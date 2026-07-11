@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import { listAllPostSlugs } from '@/lib/blog/service';
 import { listBrands } from '@/lib/brands/service';
 import { listCategories } from '@/lib/categories/service';
@@ -42,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [products, categories, brands, posts, suppliers] = await Promise.all([
     prisma.product.findMany({
+      where: { ...PUBLIC_PRODUCT_WHERE },
       select: { slug: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 5000

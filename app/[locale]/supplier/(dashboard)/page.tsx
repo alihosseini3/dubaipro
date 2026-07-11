@@ -42,7 +42,7 @@ export default async function SupplierOverviewPage({ params }: Props) {
       getDisplayCurrency(locale),
       getSupplierAnalytics(supplier.id, range),
       prisma.product.groupBy({
-        by: ['isPublished'],
+        by: ['status'],
         where: { supplierId: supplier.id },
         _count: { id: true },
       }),
@@ -62,9 +62,9 @@ export default async function SupplierOverviewPage({ params }: Props) {
     ]);
 
   const publishedCount =
-    productStats.find((s) => s.isPublished)?._count.id ?? 0;
-  const draftCount = productStats.find((s) => !s.isPublished)?._count.id ?? 0;
-  const totalProducts = publishedCount + draftCount;
+    productStats.find((s) => s.status === 'APPROVED')?._count.id ?? 0;
+  const totalProducts = productStats.reduce((sum, s) => sum + s._count.id, 0);
+  const draftCount = totalProducts - publishedCount;
 
   const storefrontHref = profile?.slug ? `/${locale}/suppliers/${profile.slug}` : null;
 

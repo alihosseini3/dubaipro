@@ -1,37 +1,43 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth/session';
-import { ChatError, startConversation } from '@/lib/chat/service';
-import { badRequest, handlePrismaError, notFound } from '@/lib/api/errors';
-import { isNonEmptyString, parseJsonBody } from '@/lib/api/validation';
+import { createRoute } from '@/lib/api/handler';
+import { prisma } from '@/lib/prisma';
+import {
+  findOrCreateDirectConversation,
+  MessagingError
+} from '@/lib/messaging/service';
 
 export const runtime = 'nodejs';
 
-type Body = { peerId?: unknown };
+const bodySchema = z.object({ peerId: z.string().min(1) });
 
-export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const parsed = await parseJsonBody<Body>(request);
-  if (!parsed.ok) return badRequest(parsed.error);
-  const { peerId } = parsed.data;
-
-  if (!isNonEmptyString(peerId)) return badRequest('peerId is required');
-
-  try {
-    const convo = await startConversation(user.id, peerId);
-    if (!convo) return notFound('Conversation not found');
-    return NextResponse.json({ data: { id: convo.id } });
-  } catch (error) {
-    if (error instanceof ChatError) {
-      if (error.code === 'peer_not_found') return notFound('Peer not found');
-      if (error.code === 'invalid_peer' || error.code === 'self_chat') {
-        return badRequest(error.code);
+/**
+ * LEGACY-compatible entry point ("chat with seller" buttons pass the seller
+ * USER id). Resolves the peer's supplier org and opens the DIRECT thread.
+ * New code should POST /api/conversations with a supplierId directly.
+ */
+export const POST = createRoute(
+  { auth: 'user', body: bodySchema },
+  async ({ user, body }) => {
+    try {
+      const supplier = await prisma.supplier.findUnique({
+        where: { userId: body.peerId },
+        select: { id: true }
+      });
+      if (!supplier) {
+        return NextResponse.json({ error: 'Peer not found' }, { status: 404 });
       }
+      const conversation = await findOrCreateDirectConversation({
+        buyerId: user.id,
+        supplierId: supplier.id
+      });
+      return NextResponse.json({ data: { id: conversation.id } });
+    } catch (error) {
+      if (error instanceof MessagingError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
     }
-    return handlePrismaError(error, 'POST /api/chat/start');
   }
-}
+);

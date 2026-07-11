@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { prisma } from '@/lib/prisma';
 import { requireSupplier } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import { SupplierShell, type SupplierNavItem } from '@/components/supplier/SupplierShell';
 
 type Props = {
@@ -19,7 +20,7 @@ const STATUS_TONE: Record<string, 'verified' | 'pending' | 'rejected'> = {
 
 export default async function SupplierDashboardLayout({ children, params }: Props) {
   const { locale } = await params;
-  const { supplier } = await requireSupplier(locale, `/${locale}/supplier`);
+  const { supplier, member } = await requireSupplier(locale, `/${locale}/supplier`);
 
   const [t, tp, profile] = await Promise.all([
     getTranslations({ locale, namespace: 'supplier.nav' }),
@@ -43,6 +44,33 @@ export default async function SupplierDashboardLayout({ children, params }: Prop
     { key: 'analytics', label: t('analytics'), href: `/${locale}/supplier/analytics` },
     { key: 'profile', label: t('profile'), href: `/${locale}/supplier/profile` },
   ];
+  if (memberHasPermission(member.role, 'supplier.messages', member.permissions)) {
+    nav.splice(1, 0, {
+      key: 'messages',
+      label: t('messages'),
+      href: `/${locale}/supplier/messages`
+    });
+  }
+  if (memberHasPermission(member.role, 'supplier.samples.manage', member.permissions)) {
+    nav.push({ key: 'samples', label: t('samples'), href: `/${locale}/supplier/samples` });
+  }
+  if (memberHasPermission(member.role, 'supplier.team.manage', member.permissions)) {
+    nav.push({ key: 'team', label: t('team'), href: `/${locale}/supplier/team` });
+  }
+  if (
+    memberHasPermission(member.role, 'supplier.subscription.view', member.permissions)
+  ) {
+    nav.push({
+      key: 'subscription',
+      label: t('subscription'),
+      href: `/${locale}/supplier/subscription`
+    });
+  }
+  nav.push({
+    key: 'notifications',
+    label: t('notifications'),
+    href: `/${locale}/supplier/notifications`
+  });
 
   return (
     <SupplierShell

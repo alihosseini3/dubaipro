@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { AdminCard } from '@/components/admin/AdminCard';
 import { ContactMessageRow } from '@/components/admin/ContactMessageRow';
-import { listAllConversations } from '@/lib/chat/service';
+import { listConversationsForAdmin } from '@/lib/messaging/service';
 import { prisma } from '@/lib/prisma';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -14,8 +14,8 @@ export default async function AdminMessagesPage({ params }: Props) {
 
   // Internal chat conversations (existing) + guest contact-form submissions
   // (new). Both are loaded server-side so the admin sees a unified inbox.
-  const [rows, contactRows] = await Promise.all([
-    listAllConversations({ take: 200 }),
+  const [{ items: rows }, contactRows] = await Promise.all([
+    listConversationsForAdmin({ page: 1, pageSize: 200 }),
     prisma.contactMessage.findMany({
       orderBy: { createdAt: 'desc' },
       take: 200
@@ -57,28 +57,32 @@ export default async function AdminMessagesPage({ params }: Props) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((c) => (
-                <tr key={c.id}>
+                <tr key={c.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-slate-900">
-                      {c.customer.name}
-                    </p>
+                    <a
+                      href={`/${locale}/admin/messages/${c.id}`}
+                      className="font-medium text-slate-900 hover:underline"
+                    >
+                      {c.members[0]?.user.name ?? '—'}
+                    </a>
                     <p className="font-mono text-xs text-slate-500">
-                      {c.customer.email}
+                      {c.members[0]?.user.email ?? ''}
                     </p>
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-900">
-                      {c.seller.name}
+                      {c.supplier?.name ?? c.members[1]?.user.name ?? '—'}
                     </p>
-                    <p className="font-mono text-xs text-slate-500">
-                      {c.seller.email}
+                    <p className="text-xs text-slate-500">
+                      {c.type}
+                      {c.subject ? ` · ${c.subject}` : ''}
                     </p>
                   </td>
                   <td className="px-4 py-3 tabular-nums text-slate-700">
                     {c._count.messages}
                   </td>
                   <td className="px-4 py-3 tabular-nums text-slate-600">
-                    {c.updatedAt.toISOString().slice(0, 16).replace('T', ' ')}
+                    {c.lastMessageAt.toISOString().slice(0, 16).replace('T', ' ')}
                   </td>
                 </tr>
               ))}

@@ -6,9 +6,9 @@ import { sendContactReplyEmail } from '@/lib/email/service';
 import { parseJsonBody, isNonEmptyString } from '@/lib/api/validation';
 import { handlePrismaError } from '@/lib/api/errors';
 import {
-  getOrCreateAdminConversation,
-  sendAdminMessage
-} from '@/lib/chat/service';
+  getOrCreateSupportConversation,
+  sendMessage
+} from '@/lib/messaging/service';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -74,15 +74,15 @@ export async function POST(request: NextRequest, { params }: Params) {
     // 3. Create internal chat if user exists or createChat is true
     if (createChat && contactMessage.userId) {
       try {
-        const conversation = await getOrCreateAdminConversation(
+        const conversation = await getOrCreateSupportConversation(
           admin.id,
           contactMessage.userId
         );
         conversationId = conversation.id;
 
-        await sendAdminMessage({
+        await sendMessage({
           conversationId: conversation.id,
-          adminId: admin.id,
+          senderId: admin.id,
           content: `پاسخ به پیام فرم تماس / Reply to contact form:\n\n${trimmedReply}`
         });
       } catch (chatError) {

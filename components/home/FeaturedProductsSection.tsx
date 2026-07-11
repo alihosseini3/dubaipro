@@ -4,6 +4,7 @@ import { Price } from '@/components/currency/Price';
 import type { HomepageSectionDTO } from '@/lib/homepage/types';
 import { localizeArray } from '@/lib/i18n/localize';
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 import { SectionHeader } from './CategoriesSection';
 
@@ -127,7 +128,8 @@ async function loadProducts(
   if (pinnedIds.length > 0) {
     const rows = await prisma.product
       .findMany({
-        where: { id: { in: pinnedIds } },
+        // Even admin-pinned products must be approved+published to render.
+        where: { ...PUBLIC_PRODUCT_WHERE, id: { in: pinnedIds } },
         select: {
           id: true,
           slug: true,
@@ -159,6 +161,7 @@ async function loadProducts(
 
   const rows = await prisma.product
     .findMany({
+      where: { ...PUBLIC_PRODUCT_WHERE },
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: {

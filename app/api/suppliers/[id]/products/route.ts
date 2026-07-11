@@ -14,6 +14,7 @@ import type { Prisma } from '@prisma/client';
 
 import { handlePrismaError, notFound } from '@/lib/api/errors';
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import { resolveActiveSupplierIdByParam } from '@/lib/suppliers';
 
 export const runtime = 'nodejs';
@@ -40,7 +41,10 @@ export async function GET(request: Request, { params }: Params) {
     const categoryId = searchParams.get('categoryId')?.trim();
     const sortParam = searchParams.get('sort');
 
-    const where: Prisma.ProductWhereInput = { supplierId: resolved.id };
+    const where: Prisma.ProductWhereInput = {
+      ...PUBLIC_PRODUCT_WHERE,
+      supplierId: resolved.id
+    };
     if (q && q.length > 0) {
       where.title = { contains: q, mode: 'insensitive' };
     }

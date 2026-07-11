@@ -80,6 +80,17 @@ async function main() {
     }
   });
 
+  // OWNER team membership — access to /supplier resolves through this row.
+  await prisma.supplierMember.upsert({
+    where: { userId: supplierUser.id },
+    update: {},
+    create: {
+      supplierId: supplier.id,
+      userId: supplierUser.id,
+      role: 'OWNER'
+    }
+  });
+
   // Categories
   const categoriesData = [
     { name: 'Electronics', slug: 'electronics' },

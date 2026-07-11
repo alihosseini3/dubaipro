@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 /**
  * Lazily creates the user's wishlist row on first interaction.
@@ -46,9 +47,10 @@ export async function toggleWishlistProduct(
   userId: string,
   productId: string
 ): Promise<WishlistToggleResult> {
-  // Guard: product must exist. Avoids polluting wishlist with stale ids.
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  // Guard: product must exist and be publicly visible. Avoids polluting
+  // the wishlist with stale or unapproved ids.
+  const product = await prisma.product.findFirst({
+    where: { id: productId, ...PUBLIC_PRODUCT_WHERE },
     select: { id: true }
   });
   if (!product) {

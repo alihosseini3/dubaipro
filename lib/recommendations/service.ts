@@ -3,6 +3,7 @@ import 'server-only';
 import { cache } from 'react';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 export type RecommendedProduct = {
   id: string;
@@ -29,6 +30,7 @@ export const getRelatedProducts = cache(async function getRelatedProducts(
   const rows = await prisma.product
     .findMany({
       where: {
+        ...PUBLIC_PRODUCT_WHERE,
         categoryId: seed.categoryId,
         id: { not: productId }
       },
@@ -93,6 +95,7 @@ export const getFrequentlyBoughtTogether = cache(
         JOIN "Product" p ON p."id" = b."productId"
         WHERE a."productId" = ${productId}
           AND o."paymentStatus" = 'PAID'
+          AND p."status" = 'APPROVED' AND p."isPublished" = true
         GROUP BY p."id"
         ORDER BY "cooccurrence" DESC, p."createdAt" DESC
         LIMIT ${limit}

@@ -18,6 +18,7 @@ type Props = {
  */
 export function RoleBadge({ role, labels, className = '' }: Props) {
   const palette: Record<UserRole, string> = {
+    SUPER_ADMIN: 'bg-amber-50 text-amber-700 ring-amber-200',
     ADMIN: 'bg-rose-50 text-rose-700 ring-rose-200',
     SUPPLIER: 'bg-sky-50 text-sky-700 ring-sky-200',
     SELLER: 'bg-violet-50 text-violet-700 ring-violet-200',

@@ -13,6 +13,8 @@ import {
   type ValidationErrors
 } from '@/lib/api/validation';
 import { setProductAttributeValues } from '@/lib/attributes/service';
+import { getAdminOrNull } from '@/lib/auth/require-admin';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 type CreateProductBody = {
   title?: unknown;
@@ -73,7 +75,10 @@ export async function GET(request: Request) {
     const brandId = searchParams.get('brandId')?.trim();
     const isB2BParam = searchParams.get('isB2B');
 
-    const where: Prisma.ProductWhereInput = {};
+    // Non-admin callers only ever see approved + published products. Admins
+    // (product management UI) see everything.
+    const admin = await getAdminOrNull();
+    const where: Prisma.ProductWhereInput = admin ? {} : { ...PUBLIC_PRODUCT_WHERE };
     if (slug) where.slug = slug;
     if (search) {
       where.OR = [
@@ -117,6 +122,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Admin-only: this is the admin panel's create path (suppliers use
+  // /api/supplier/products, which scopes to their own org).
+  const admin = await getAdminOrNull();
+  if (!admin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const parsed = await parseJsonBody<CreateProductBody>(request);
   if (!parsed.ok) return badRequest(parsed.error);
   const body = parsed.data;

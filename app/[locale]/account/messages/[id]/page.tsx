@@ -3,61 +3,58 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { AccountSidebar } from '@/components/account/AccountSidebar';
-import { ChatRoom } from '@/components/chat/ChatRoom';
 import { requireUser } from '@/lib/auth/require-user';
-import { ChatError, getConversationForUser, listMessages } from '@/lib/chat/service';
+import { getConversationHeader, MessagingError } from '@/lib/messaging/service';
+import { MessageThread } from '@/components/messaging/MessageThread';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
-export default async function ChatRoomPage({ params }: Props) {
+export default async function MessageThreadPage({ params }: Props) {
   const { locale, id } = await params;
   const user = await requireUser(locale, `/account/messages/${id}`);
-  const t = await getTranslations({ locale, namespace: 'chat' });
+  const t = await getTranslations({ locale, namespace: 'messaging' });
 
-  let convo;
-  let initialMessages;
+  let header;
   try {
-    [convo, initialMessages] = await Promise.all([
-      getConversationForUser(id, user.id),
-      listMessages(id, user.id)
-    ]);
-  } catch (err) {
-    if (err instanceof ChatError) {
-      if (err.code === 'not_found') notFound();
-      if (err.code === 'forbidden') notFound();
-    }
-    throw err;
+    header = await getConversationHeader(id, user.id);
+  } catch (error) {
+    if (error instanceof MessagingError) notFound();
+    throw error;
   }
-
-  if (!convo) notFound();
-
-  const peer = convo.customerId === user.id ? convo.seller : convo.customer;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <AccountSidebar locale={locale} user={user} />
       <div className="space-y-4 lg:col-span-2">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <Link
             href={`/${locale}/account/messages`}
-            className="text-sm text-slate-600 transition hover:text-slate-900"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           >
-            {t('backToList')}
+            ← {t('back')}
           </Link>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold text-slate-900">
+              {header.counterpartName}
+            </h1>
+            {header.subject && (
+              <p className="truncate text-xs text-slate-500">{header.subject}</p>
+            )}
+          </div>
+          {header.product && (
+            <Link
+              href={`/${locale}/products/${header.product.slug}`}
+              className="ms-auto hidden rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 sm:block"
+            >
+              {t('viewProduct')}
+            </Link>
+          )}
         </div>
-
-        <ChatRoom
-          conversationId={convo.id}
-          currentUserId={user.id}
-          peer={{ id: peer.id, name: peer.name, role: peer.role }}
-          initialMessages={initialMessages.map((m) => ({
-            id: m.id,
-            content: m.content,
-            senderId: m.senderId,
-            createdAt: m.createdAt.toISOString(),
-            senderName: m.sender.name
-          }))}
+        <MessageThread
+          conversationId={id}
+          viewerId={user.id}
           locale={locale}
+          archived={false}
         />
       </div>
     </div>

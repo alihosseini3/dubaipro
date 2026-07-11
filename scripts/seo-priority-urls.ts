@@ -13,6 +13,7 @@
  *   5. Top N most recent in-stock products
  */
 import { prisma } from '../lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '../lib/products/visibility';
 
 const LOCALES = ['en', 'fa', 'ar', 'ur'] as const;
 const DEFAULT_LOCALE = 'en';
@@ -47,7 +48,7 @@ async function main() {
 
   // 5 — top 5 newest in-stock products
   const topProducts = await prisma.product.findMany({
-    where: { stock: { gt: 0 } },
+    where: { ...PUBLIC_PRODUCT_WHERE, stock: { gt: 0 } },
     take: 5,
     orderBy: { createdAt: 'desc' },
     select: { slug: true }

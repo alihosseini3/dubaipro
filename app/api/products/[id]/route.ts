@@ -16,6 +16,8 @@ import {
   type ValidationErrors
 } from '@/lib/api/validation';
 import { setProductAttributeValues } from '@/lib/attributes/service';
+import { getAdminOrNull } from '@/lib/auth/require-admin';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 type UpdateProductBody = {
   title?: unknown;
@@ -47,8 +49,11 @@ export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    const product = await prisma.product.findUnique({
-      where: { id },
+    // Public callers only see approved+published products; the admin panel
+    // (which edits drafts through this endpoint) sees everything.
+    const admin = await getAdminOrNull();
+    const product = await prisma.product.findFirst({
+      where: { id, ...(admin ? {} : PUBLIC_PRODUCT_WHERE) },
       include: {
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
@@ -65,6 +70,12 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
+
+  // Admin-only: suppliers edit their products via /api/supplier/products/[id].
+  const admin = await getAdminOrNull();
+  if (!admin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const parsed = await parseJsonBody<UpdateProductBody>(request);
   if (!parsed.ok) return badRequest(parsed.error);
@@ -245,6 +256,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
+
+  // Admin-only: destructive. Suppliers archive via the status workflow instead.
+  const admin = await getAdminOrNull();
+  if (!admin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     await prisma.product.delete({ where: { id } });

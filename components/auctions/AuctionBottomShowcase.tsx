@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import { listLiveAuctions, listRelatedAuctions } from '@/lib/auctions/service';
 import type { AuctionDTO } from '@/lib/auctions/service';
 import { localizeArray } from '@/lib/i18n/localize';
@@ -92,7 +93,7 @@ export async function AuctionBottomShowcase({ auctionId, categoryId, locale }: P
 
   const sameCatProductsRaw = categoryId
     ? await prisma.product.findMany({
-        where: { categoryId },
+        where: { ...PUBLIC_PRODUCT_WHERE, categoryId },
         orderBy: { createdAt: 'desc' },
         take: 12,
         select: productSelect,
@@ -102,7 +103,7 @@ export async function AuctionBottomShowcase({ auctionId, categoryId, locale }: P
   let productRows = sameCatProductsRaw;
   if (productRows.length < 6) {
     const more = await prisma.product.findMany({
-      where: { id: { notIn: productRows.map((p) => p.id) } },
+      where: { ...PUBLIC_PRODUCT_WHERE, id: { notIn: productRows.map((p) => p.id) } },
       orderBy: { createdAt: 'desc' },
       take: 12,
       select: productSelect,
@@ -135,7 +136,7 @@ export async function AuctionBottomShowcase({ auctionId, categoryId, locale }: P
   let bestSellersRaw: typeof productRows = [];
   if (bestIds.length > 0) {
     const rows = await prisma.product.findMany({
-      where: { id: { in: bestIds } },
+      where: { ...PUBLIC_PRODUCT_WHERE, id: { in: bestIds } },
       select: productSelect,
     });
     /* preserve groupBy order */
@@ -144,7 +145,7 @@ export async function AuctionBottomShowcase({ auctionId, categoryId, locale }: P
   }
   if (bestSellersRaw.length < 6) {
     const filler = await prisma.product.findMany({
-      where: { id: { notIn: bestSellersRaw.map((p) => p.id) } },
+      where: { ...PUBLIC_PRODUCT_WHERE, id: { notIn: bestSellersRaw.map((p) => p.id) } },
       orderBy: { createdAt: 'desc' },
       take: 12,
       select: productSelect,

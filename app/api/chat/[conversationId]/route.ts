@@ -1,31 +1,19 @@
 import { NextResponse } from 'next/server';
 
-import { getCurrentUser } from '@/lib/auth/session';
-import { ChatError, listMessages } from '@/lib/chat/service';
-import { handlePrismaError, notFound } from '@/lib/api/errors';
+import { createRoute } from '@/lib/api/handler';
+import { listMessages, MessagingError } from '@/lib/messaging/service';
 
 export const runtime = 'nodejs';
 
-type Ctx = { params: Promise<{ conversationId: string }> };
-
-export async function GET(_request: Request, context: Ctx) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const { conversationId } = await context.params;
-
+/** LEGACY-compatible message list. New UI uses /api/conversations/[id]/messages. */
+export const GET = createRoute({ auth: 'user' }, async ({ user, params }) => {
   try {
-    const messages = await listMessages(conversationId, user.id);
+    const messages = await listMessages(String(params.conversationId), user.id);
     return NextResponse.json({ data: messages });
   } catch (error) {
-    if (error instanceof ChatError) {
-      if (error.code === 'not_found') return notFound('Conversation not found');
-      if (error.code === 'forbidden') {
-        return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-      }
+    if (error instanceof MessagingError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    return handlePrismaError(error, 'GET /api/chat/[conversationId]');
+    throw error;
   }
-}
+});

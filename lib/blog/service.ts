@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 export type FaqItem = { q: string; a: string };
 
@@ -92,7 +93,7 @@ export async function getPostBySlug(
 export async function getPostLinkedProducts(productIds: string[]) {
   if (productIds.length === 0) return [];
   const rows = await prisma.product.findMany({
-    where: { id: { in: productIds } },
+    where: { ...PUBLIC_PRODUCT_WHERE, id: { in: productIds } },
     select: {
       id: true,
       title: true,

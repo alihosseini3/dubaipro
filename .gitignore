@@ -19,3 +19,6 @@ uploads
 .cache
 .vercel
 *.log
+
+# Local DB archives (scripts/archive-rfq-tables.mjs etc.) - contain data, never commit
+/backups/

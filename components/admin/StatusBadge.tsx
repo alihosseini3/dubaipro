@@ -29,6 +29,10 @@ const PALETTE: Record<string, Palette> = {
   CUSTOMER:    { bg: 'bg-slate-100',  text: 'text-slate-600',   dot: 'bg-slate-400' },
   TRUE:        { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   FALSE:       { bg: 'bg-slate-100',  text: 'text-slate-500',   dot: 'bg-slate-300' },
+  // Product review workflow
+  PENDING_REVIEW: { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500' },
+  APPROVED:       { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  ARCHIVED:       { bg: 'bg-slate-100',  text: 'text-slate-500',   dot: 'bg-slate-300' },
 };
 
 const FALLBACK: Palette = { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' };

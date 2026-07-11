@@ -1,44 +1,36 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth/session';
-import { ChatError, sendMessage } from '@/lib/chat/service';
-import { badRequest, handlePrismaError, notFound } from '@/lib/api/errors';
-import { isNonEmptyString, parseJsonBody } from '@/lib/api/validation';
+import { createRoute } from '@/lib/api/handler';
+import { MessagingError, sendMessage } from '@/lib/messaging/service';
 
 export const runtime = 'nodejs';
 
-type Body = { conversationId?: unknown; content?: unknown };
+const bodySchema = z.object({
+  conversationId: z.string().min(1),
+  content: z.string().trim().min(1).max(4000)
+});
 
-export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const parsed = await parseJsonBody<Body>(request);
-  if (!parsed.ok) return badRequest(parsed.error);
-  const { conversationId, content } = parsed.data;
-
-  if (!isNonEmptyString(conversationId)) {
-    return badRequest('conversationId is required');
-  }
-  if (typeof content !== 'string') return badRequest('content is required');
-
-  try {
-    const message = await sendMessage({
-      conversationId,
-      senderId: user.id,
-      content
-    });
-    return NextResponse.json({ data: message }, { status: 201 });
-  } catch (error) {
-    if (error instanceof ChatError) {
-      if (error.code === 'not_found') return notFound('Conversation not found');
-      if (error.code === 'forbidden') {
-        return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+/** LEGACY-compatible send endpoint (ChatRoom). New UI posts to /api/conversations/[id]/messages. */
+export const POST = createRoute(
+  {
+    auth: 'user',
+    body: bodySchema,
+    rateLimit: { key: 'message-send', limit: 60, windowSeconds: 60 }
+  },
+  async ({ user, body }) => {
+    try {
+      const message = await sendMessage({
+        conversationId: body.conversationId,
+        senderId: user.id,
+        content: body.content
+      });
+      return NextResponse.json({ data: message }, { status: 201 });
+    } catch (error) {
+      if (error instanceof MessagingError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
       }
-      if (error.code === 'invalid_content') return badRequest('invalid_content');
+      throw error;
     }
-    return handlePrismaError(error, 'POST /api/chat/send');
   }
-}
+);

@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import type { FilteredProduct, FilterFacets, CategoryFilterState } from '@/lib/categories/filter';
 
 /**
@@ -101,6 +102,7 @@ export async function searchSuggestions(
   const [productsRaw, brands, categories] = await Promise.all([
     prisma.product.findMany({
       where: {
+        ...PUBLIC_PRODUCT_WHERE,
         OR: [
           { title: { contains: q, mode: ci } },
           { slug: { contains: q, mode: ci } },
@@ -180,7 +182,7 @@ export async function searchProducts(opts: ProductSearchOptions = {}) {
   );
   const ci: Prisma.QueryMode = 'insensitive';
 
-  const where: Prisma.ProductWhereInput = {};
+  const where: Prisma.ProductWhereInput = { ...PUBLIC_PRODUCT_WHERE };
 
   if (q) {
     where.OR = [
@@ -234,6 +236,7 @@ export async function searchProducts(opts: ProductSearchOptions = {}) {
  */
 export async function getPopularProducts(limit = 12) {
   return prisma.product.findMany({
+    where: { ...PUBLIC_PRODUCT_WHERE },
     orderBy: { createdAt: 'desc' },
     take: Math.min(MAX_PAGE_SIZE, Math.max(1, limit)),
     include: {
@@ -263,7 +266,8 @@ function buildProductListingWhere(
 ): Prisma.ProductWhereInput {
   const ci: Prisma.QueryMode = 'insensitive';
   const q = sanitizeQuery(filters.query ?? null);
-  const where: Prisma.ProductWhereInput = {};
+  // Storefront listings never show unapproved/unpublished products.
+  const where: Prisma.ProductWhereInput = { ...PUBLIC_PRODUCT_WHERE };
 
   if (q) {
     where.OR = [

@@ -8,7 +8,7 @@ type RegisterFormProps = {
   locale: string;
 };
 
-type SignupRole = 'CUSTOMER' | 'SELLER' | 'SUPPLIER';
+type SignupRole = 'CUSTOMER' | 'SUPPLIER';
 
 /**
  * Compute a 0-4 password strength score.
@@ -135,25 +135,6 @@ export function RegisterForm({ locale }: RegisterFormProps) {
           aria-hidden
         >
           <path d="M6 2l-1 4h14l-1-4M3 6h18l-2 13a2 2 0 01-2 2H7a2 2 0 01-2-2L3 6zM9 10v4m6-4v4" />
-        </svg>
-      )
-    },
-    {
-      value: 'SELLER',
-      label: t('roleSeller'),
-      desc: t('roleSellerDesc'),
-      icon: (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5"
-          aria-hidden
-        >
-          <path d="M20 7H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM8 7V5a4 4 0 018 0v2M10 12h4" />
         </svg>
       )
     },

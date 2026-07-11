@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 
 import { prisma } from '@/lib/prisma';
+import { CATEGORIES_CACHE_TAG } from '@/lib/categories/service';
 import { badRequest, handlePrismaError } from '@/lib/api/errors';
 import {
   isNonEmptyString,
@@ -74,6 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const category = await prisma.category.update({ where: { id }, data });
+    revalidateTag(CATEGORIES_CACHE_TAG);
     return NextResponse.json({ data: category });
   } catch (error) {
     return handlePrismaError(error, `PATCH /api/categories/${id}`);
@@ -84,6 +87,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   try {
     await prisma.category.delete({ where: { id } });
+    revalidateTag(CATEGORIES_CACHE_TAG);
     return NextResponse.json({ data: { id, deleted: true } });
   } catch (error) {
     return handlePrismaError(error, `DELETE /api/categories/${id}`);

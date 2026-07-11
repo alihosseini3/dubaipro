@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
 
-import { getAdminOrNull } from '@/lib/auth/require-admin';
-import { handlePrismaError, notFound } from '@/lib/api/errors';
+import { createRoute } from '@/lib/api/handler';
+import { notFound } from '@/lib/api/errors';
 import { deleteReview } from '@/lib/reviews/service';
 
 export const runtime = 'nodejs';
 
-type RouteContext = { params: Promise<{ id: string }> };
+export const DELETE = createRoute(
+  {
+    auth: 'admin',
+    audit: { action: 'review.delete', entityType: 'Review' }
+  },
+  async ({ params, audit }) => {
+    const id = String(params.id);
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const admin = await getAdminOrNull();
-  if (!admin) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const { id } = await context.params;
-
-  try {
     const ok = await deleteReview(id);
     if (!ok) return notFound('Review not found');
+
+    audit.entityId = id;
     return NextResponse.json({ data: { id } });
-  } catch (error) {
-    return handlePrismaError(error, 'DELETE /api/admin/reviews/[id]');
   }
-}
+);

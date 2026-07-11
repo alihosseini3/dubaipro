@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, type ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
 
-type NavKey = 'dashboard' | 'orders' | 'wishlist' | 'messages' | 'addresses' | 'profile';
+type NavKey = 'dashboard' | 'orders' | 'wishlist' | 'messages' | 'samples' | 'notifications' | 'addresses' | 'profile';
 
 type NavItem = {
   key: NavKey;
@@ -33,6 +33,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'orders', href: '/account/orders', icon: icon('M6 2l2 4h8l2-4M4 6h16v14H4zM9 10v6m6-6v6') },
   { key: 'wishlist', href: '/account/wishlist', icon: icon('M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z') },
   { key: 'messages', href: '/account/messages', icon: icon('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z') },
+  { key: 'samples', href: '/account/samples', icon: icon('M21 8V21H3V8M1 3h22v5H1zM10 12h4') },
+  { key: 'notifications', href: '/account/notifications', icon: icon('M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0') },
   { key: 'addresses', href: '/account/addresses', icon: icon('M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12zm0-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z') },
   { key: 'profile', href: '/account/profile', icon: icon('M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21a8 8 0 0 1 16 0') }
 ];

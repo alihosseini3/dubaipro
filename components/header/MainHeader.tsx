@@ -9,6 +9,7 @@ import { CartBadge } from './CartBadge';
 import { SearchBar } from './SearchBar';
 import { UserMenu } from './UserMenu';
 import { WishlistBadge } from './WishlistBadge';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 type Props = { locale: string };
 
@@ -84,6 +85,7 @@ export async function MainHeader({ locale }: Props) {
 
         {/* Right cluster */}
         <div className="flex shrink-0 items-center gap-2">
+          {user && <NotificationBell locale={locale} />}
           <WishlistBadge
             locale={locale}
             userId={user?.id ?? null}

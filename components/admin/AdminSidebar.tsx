@@ -7,12 +7,12 @@ import { useTranslations } from 'next-intl';
 
 type NavKey =
   | 'dashboard' | 'analytics'
-  | 'products' | 'categories' | 'suppliers' | 'supplierApplications' | 'orders'
-  | 'shipping' | 'payments' | 'coupons' | 'currency'
-  | 'users' | 'reviews' | 'messages' | 'chat' | 'customers' | 'affiliate'
+  | 'products' | 'reviewQueue' | 'categories' | 'suppliers' | 'supplierApplications' | 'orders'
+  | 'shipping' | 'payments' | 'coupons' | 'currency' | 'plans' | 'subscriptions'
+  | 'users' | 'reviews' | 'messages' | 'chat' | 'customers' | 'affiliate' | 'notifications'
   | 'marketing' | 'automation' | 'experiments'
   | 'homepage' | 'header' | 'gallery' | 'pages' | 'auctions' | 'filters' | 'attributes'
-  | 'settings';
+  | 'settings' | 'auditLogs';
 
 type NavItem = { key: NavKey; href: string; icon: ReactElement };
 type NavGroup = { labelKey: string; items: NavItem[] };
@@ -38,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'groupCommerce',
     items: [
       { key: 'products',   href: '/admin/products',   icon: ico('M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7') },
+      { key: 'reviewQueue', href: '/admin/products/review-queue', icon: ico('M9 12l2 2 4-4M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z') },
       { key: 'categories', href: '/admin/categories', icon: ico('M4 6h16M4 12h16M4 18h10') },
       { key: 'suppliers',  href: '/admin/suppliers',  icon: ico('M3 21V9l9-6 9 6v12H3zm6 0v-6h6v6') },
       { key: 'supplierApplications', href: '/admin/supplier-applications', icon: ico('M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z') },
@@ -52,6 +53,8 @@ const NAV_GROUPS: NavGroup[] = [
       { key: 'coupons',    href: '/admin/coupons',           icon: ico('M20 12a2 2 0 0 1 0-4V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v2a2 2 0 0 1 0 4v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z') },
       { key: 'shipping',   href: '/admin/shipping',          icon: ico('M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm10 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z') },
       { key: 'currency',   href: '/admin/settings/currency', icon: ico('M12 8c-2 0-3 1-3 2.5S10 13 12 13s3 1 3 2.5S14 18 12 18M12 6v2m0 10v2') },
+      { key: 'plans',      href: '/admin/plans',             icon: ico('M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z') },
+      { key: 'subscriptions', href: '/admin/subscriptions',  icon: ico('M4 4h16v4H4zM4 12h16v8H4zM8 16h4') },
     ],
   },
   {
@@ -68,6 +71,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'groupMarketing',
     items: [
       { key: 'marketing',    href: '/admin/marketing',    icon: ico('M3 11l18-7v16L3 13zM7 13v5l4 1v-5') },
+      { key: 'notifications', href: '/admin/notifications', icon: ico('M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0') },
       { key: 'automation',   href: '/admin/automation',   icon: ico('M13 2L3 14h7l-1 8 10-12h-7l1-8z') },
       { key: 'experiments',  href: '/admin/experiments',  icon: ico('M9 3h6v4l4 6a4 4 0 0 1-3.45 6H8.45A4 4 0 0 1 5 13l4-6V3zM10 14h4') },
     ],
@@ -87,6 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'groupSystem',
     items: [
+      { key: 'auditLogs', href: '/admin/audit-logs', icon: ico('M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h6') },
       { key: 'settings', href: '/admin/settings', icon: ico('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.4 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8L4.2 7A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z') },
     ],
   },

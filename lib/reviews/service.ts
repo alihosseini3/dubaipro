@@ -1,6 +1,7 @@
 import { Prisma, OrderStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 
 export class ReviewError extends Error {
   constructor(
@@ -52,8 +53,8 @@ export async function createReview(params: {
     throw new ReviewError('invalid_comment');
   }
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  const product = await prisma.product.findFirst({
+    where: { id: productId, ...PUBLIC_PRODUCT_WHERE },
     select: { id: true }
   });
   if (!product) throw new ReviewError('product_not_found');

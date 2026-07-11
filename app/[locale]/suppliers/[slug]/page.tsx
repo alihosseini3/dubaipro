@@ -13,6 +13,7 @@ import { SupplierReviewList } from '@/components/suppliers/SupplierReviewList';
 import { SupplierTabs } from '@/components/suppliers/SupplierTabs';
 import { getCurrentUser } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
+import { PUBLIC_PRODUCT_WHERE } from '@/lib/products/visibility';
 import {
   getPublicSupplierBySlug,
   isFollowing,
@@ -93,7 +94,7 @@ export default async function SupplierProfilePage({ params }: PageParams) {
     viewerReview
   ] = await Promise.all([
     prisma.product.findMany({
-      where: { supplierId: supplier.id },
+      where: { ...PUBLIC_PRODUCT_WHERE, supplierId: supplier.id },
       orderBy: { createdAt: 'desc' },
       take: 24,
       select: {

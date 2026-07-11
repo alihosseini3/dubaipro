@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 
 import { prisma } from '@/lib/prisma';
+import { CATEGORIES_CACHE_TAG } from '@/lib/categories/service';
 import { badRequest, handlePrismaError } from '@/lib/api/errors';
 import {
   isNonEmptyString,
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
         isActive:  typeof body.isActive  === 'boolean' ? body.isActive : true,
       }
     });
+    revalidateTag(CATEGORIES_CACHE_TAG);
     return NextResponse.json({ data: category }, { status: 201 });
   } catch (error) {
     return handlePrismaError(error, 'POST /api/categories');

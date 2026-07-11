@@ -12,6 +12,15 @@ import { ProductTabs } from '@/components/products/ProductTabs';
 import { ProductAuctionTeaser } from '@/components/products/ProductAuctionTeaser';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { StickyBuyBar } from '@/components/products/StickyBuyBar';
+import { TierPricingTable } from '@/components/products/TierPricingTable';
+import { ContactSupplierPanel } from '@/components/products/ContactSupplierPanel';
+import { prisma } from '@/lib/prisma';
+
+/** wa.me link digits — null when the phone is unusable (<7 digits). */
+function whatsappDigits(phone: string | null | undefined): string | null {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  return digits.length >= 7 ? digits : null;
+}
 import { SupplierCard } from '@/components/products/SupplierCard';
 import { ReviewsSection } from '@/components/reviews/ReviewsSection';
 import {
@@ -161,6 +170,14 @@ export default async function ProductDetailPage({ params }: PageParams) {
     ? await getWishlistProductIds(currentUser.id)
     : new Set<string>();
 
+  // Members of the owning org see their own product without the contact strip.
+  const viewerOwnsProduct = currentUser
+    ? !!(await prisma.supplierMember.findFirst({
+        where: { userId: currentUser.id, supplierId: product.supplier?.id ?? '' },
+        select: { id: true }
+      }))
+    : false;
+
   const breadcrumbItems = [
     { name: t('home'), path: '/' },
     { name: t('title'), path: '/products' },
@@ -257,7 +274,7 @@ export default async function ProductDetailPage({ params }: PageParams) {
             images={product.images}
           />
         </div>
-        <div className="lg:col-span-5">
+        <div className="space-y-4 lg:col-span-5">
           <ProductPurchasePanel
             product={product}
             locale={locale}
@@ -268,8 +285,20 @@ export default async function ProductDetailPage({ params }: PageParams) {
             priceNode={priceMain}
             compareAtPriceNode={compareAtPriceNode}
           />
+          {product.supplier && !viewerOwnsProduct && (
+            <ContactSupplierPanel
+              locale={locale}
+              productId={product.id}
+              supplierName={product.supplier.name}
+              whatsappPhone={whatsappDigits(product.supplier.phone)}
+              isAuthenticated={!!currentUser}
+            />
+          )}
         </div>
       </div>
+
+      {/* B2B trade block: volume pricing ladder + variants */}
+      <TierPricingTable productId={product.id} locale={locale} />
 
       {/* Tabs: description / specs / reviews */}
       <ProductTabs
