@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 import type { SupplierTier } from '@prisma/client';
 
@@ -38,6 +39,7 @@ export async function TopSuppliersSection({ locale, section }: Props) {
   const cfgIds = (section.config.supplierIds as string[] | undefined) ?? [];
   const limit = clamp((section.config.limit as number | undefined) ?? 6, 3, 12);
 
+  const t = await getTranslations({ locale, namespace: 'home.cards' });
   const rawSuppliers = await loadSuppliers(cfgIds, limit);
   if (rawSuppliers.length === 0) return null;
   // Translate supplier name + country. Supplier names are often Latin
@@ -89,17 +91,17 @@ export async function TopSuppliersSection({ locale, section }: Props) {
                   <SupplierTierBadge
                     tier={s.tier}
                     compact
-                    labels={{ verified: 'Verified', guaranteed: 'Guaranteed' }}
+                    labels={{
+                      verified: t('verified'),
+                      guaranteed: t('guaranteed')
+                    }}
                   />
                 </div>
                 <p className="mt-0.5 truncate text-xs text-slate-500">
                   {s.country}
                 </p>
                 <p className="mt-1 flex items-center gap-2 text-[11px] font-medium text-slate-600">
-                  <span>
-                    {s.productCount}{' '}
-                    {s.productCount === 1 ? 'product' : 'products'}
-                  </span>
+                  <span>{t('productCount', { count: s.productCount })}</span>
                   {s.ratingCount > 0 ? (
                     <span className="text-amber-600">
                       ★ {s.ratingAvg.toFixed(1)}

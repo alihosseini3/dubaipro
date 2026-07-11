@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 import { Price } from '@/components/currency/Price';
 import type { HomepageSectionDTO } from '@/lib/homepage/types';
@@ -19,12 +20,13 @@ type Props = { locale: string; section: HomepageSectionDTO };
  *   2. Otherwise, the most-recent products. Cheap because the
  *      `createdAt` index is already there.
  *
- * The card includes image, title, supplier, and a localized price
- * (AED → user's display currency, via the existing <Price> server
- * component). No client JS for the cards themselves — clicks just
- * navigate to the PDP.
+ * The card is B2B-first: image, title, supplier, the LOWEST volume-tier
+ * price (rendered as "from X" when tiers exist) and the MOQ line — the two
+ * numbers a wholesale buyer scans for. Prices localize through the existing
+ * <Price> server component. No client JS — clicks navigate to the PDP.
  */
 export async function FeaturedProductsSection({ locale, section }: Props) {
+  const t = await getTranslations({ locale, namespace: 'home.cards' });
   const cfgIds = (section.config.productIds as string[] | undefined) ?? [];
   const limit = clamp(
     (section.config.limit as number | undefined) ?? 8,
@@ -79,7 +81,7 @@ export async function FeaturedProductsSection({ locale, section }: Props) {
                 )}
                 {p.isB2B && (
                   <span className="absolute end-2 top-2 rounded-md bg-slate-900/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-                    Wholesale
+                    {t('wholesale')}
                   </span>
                 )}
               </div>
@@ -93,12 +95,24 @@ export async function FeaturedProductsSection({ locale, section }: Props) {
                     {p.supplierName}
                   </p>
                 )}
-                <Price
-                  amount={Number(p.price)}
-                  locale={locale}
-                  from={p.currency}
-                  className="block text-base font-black text-slate-900"
-                />
+                <p className="flex items-baseline gap-1">
+                  {p.minTierPrice !== null && (
+                    <span className="text-[11px] font-medium text-slate-400">
+                      {t('from')}
+                    </span>
+                  )}
+                  <Price
+                    amount={p.minTierPrice ?? Number(p.price)}
+                    locale={locale}
+                    from={p.minTierCurrency ?? p.currency}
+                    className="text-base font-black text-slate-900"
+                  />
+                </p>
+                {p.moq !== null && p.moq > 1 && (
+                  <p className="text-[11px] font-medium text-orange-700">
+                    {t('moq', { qty: p.moq, unit: p.moqUnit ?? '' })}
+                  </p>
+                )}
               </div>
             </Link>
           </li>
@@ -119,73 +133,89 @@ type ProductCard = {
   imageUrl: string | null;
   isB2B: boolean;
   supplierName: string | null;
+  moq: number | null;
+  moqUnit: string | null;
+  /** Cheapest volume-tier unit price — the "from X" number B2B buyers scan. */
+  minTierPrice: number | null;
+  minTierCurrency: string | null;
 };
+
+const CARD_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  price: true,
+  currency: true,
+  imageUrl: true,
+  isB2B: true,
+  moq: true,
+  moqUnit: true,
+  supplier: { select: { name: true } },
+  priceTiers: {
+    orderBy: { unitPrice: 'asc' as const },
+    take: 1,
+    select: { unitPrice: true, currency: true }
+  }
+} as const;
+
+type CardRow = {
+  id: string;
+  slug: string;
+  title: string;
+  price: unknown;
+  currency: string;
+  imageUrl: string | null;
+  isB2B: boolean;
+  moq: number | null;
+  moqUnit: string | null;
+  supplier: { name: string } | null;
+  priceTiers: { unitPrice: unknown; currency: string }[];
+};
+
+const mapRow = (r: CardRow): ProductCard => ({
+  id: r.id,
+  slug: r.slug,
+  title: r.title,
+  price: r.price as string,
+  currency: r.currency,
+  imageUrl: r.imageUrl,
+  isB2B: r.isB2B,
+  supplierName: r.supplier?.name ?? null,
+  moq: r.moq,
+  moqUnit: r.moqUnit,
+  minTierPrice: r.priceTiers[0] ? Number(r.priceTiers[0].unitPrice) : null,
+  minTierCurrency: r.priceTiers[0]?.currency ?? null
+});
 
 async function loadProducts(
   pinnedIds: string[],
   limit: number
 ): Promise<ProductCard[]> {
   if (pinnedIds.length > 0) {
-    const rows = await prisma.product
+    const rows = (await prisma.product
       .findMany({
         // Even admin-pinned products must be approved+published to render.
         where: { ...PUBLIC_PRODUCT_WHERE, id: { in: pinnedIds } },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          price: true,
-          currency: true,
-          imageUrl: true,
-          isB2B: true,
-          supplier: { select: { name: true } }
-        }
+        select: CARD_SELECT
       })
-      .catch(() => []);
+      .catch(() => [])) as CardRow[];
     // Preserve admin-defined order.
     const byId = new Map(rows.map((r) => [r.id, r]));
     return pinnedIds
       .map((id) => byId.get(id))
-      .filter((r): r is NonNullable<typeof r> => Boolean(r))
-      .map((r) => ({
-        id: r.id,
-        slug: r.slug,
-        title: r.title,
-        price: r.price as unknown as string,
-        currency: r.currency,
-        imageUrl: r.imageUrl,
-        isB2B: r.isB2B,
-        supplierName: r.supplier?.name ?? null
-      }));
+      .filter((r): r is CardRow => Boolean(r))
+      .map(mapRow);
   }
 
-  const rows = await prisma.product
+  const rows = (await prisma.product
     .findMany({
       where: { ...PUBLIC_PRODUCT_WHERE },
       orderBy: { createdAt: 'desc' },
       take: limit,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        price: true,
-        currency: true,
-        imageUrl: true,
-        isB2B: true,
-        supplier: { select: { name: true } }
-      }
+      select: CARD_SELECT
     })
-    .catch(() => []);
-  return rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    price: r.price as unknown as string,
-    currency: r.currency,
-    imageUrl: r.imageUrl,
-    isB2B: r.isB2B,
-    supplierName: r.supplier?.name ?? null
-  }));
+    .catch(() => [])) as CardRow[];
+  return rows.map(mapRow);
 }
 
 function clamp(n: number, min: number, max: number) {

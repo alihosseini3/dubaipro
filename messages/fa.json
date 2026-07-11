@@ -13,7 +13,15 @@
     "ctaProducts": "مرور محصولات",
     "ctaCategories": "کاوش دسته‌ها",
     "categoriesTitle": "دسته‌های برتر",
-    "productCount": "{count, plural, =0 {بدون محصول} one {# محصول} other {# محصول}}"
+    "productCount": "{count, plural, =0 {بدون محصول} one {# محصول} other {# محصول}}",
+    "cards": {
+      "wholesale": "عمده",
+      "from": "از",
+      "moq": "حداقل سفارش: {qty} {unit}",
+      "productCount": "{count} محصول",
+      "verified": "تاییدشده",
+      "guaranteed": "تضمین‌شده"
+    }
   },
   "categories": {
     "metaTitle": "دسته‌بندی‌ها",

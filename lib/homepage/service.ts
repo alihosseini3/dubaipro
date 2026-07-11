@@ -266,7 +266,9 @@ const DEFAULTS: ReadonlyArray<
     ctaLabel: 'Browse Products',
     ctaHref: '/products',
     ctaSecondaryLabel: 'Start Wholesale Buying',
-    ctaSecondaryHref: '/contact?type=quote',
+    // Wholesale buying = pick a verified supplier and negotiate directly
+    // (the old /contact?type=quote flow was retired with the RFQ module).
+    ctaSecondaryHref: '/suppliers',
     config: {
       chips: ['Verified suppliers', 'Fast shipping', 'Secure payments']
     }
@@ -286,6 +288,17 @@ const DEFAULTS: ReadonlyArray<
     ctaLabel: 'See all products',
     ctaHref: '/products',
     config: { limit: 8 }
+  },
+  {
+    // Right after the product grid: on a B2B marketplace the supplier
+    // directory is a primary destination, not a footer afterthought.
+    type: 'TOP_SUPPLIERS',
+    title: 'Top suppliers',
+    subtitle:
+      'Verified UAE suppliers with strong track records. Click through to browse their full catalog.',
+    ctaLabel: 'View all suppliers',
+    ctaHref: '/suppliers',
+    config: { limit: 6 }
   },
   {
     type: 'TRUST',
@@ -377,15 +390,6 @@ const DEFAULTS: ReadonlyArray<
         }
       ]
     }
-  },
-  {
-    type: 'TOP_SUPPLIERS',
-    title: 'Top suppliers',
-    subtitle:
-      'Verified UAE suppliers with strong track records. Click through to browse their full catalog.',
-    ctaLabel: 'View all suppliers',
-    ctaHref: '/suppliers',
-    config: { limit: 6 }
   },
   {
     type: 'AUCTION',

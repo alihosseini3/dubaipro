@@ -84,7 +84,15 @@
     "ctaProducts": "Browse products",
     "ctaCategories": "Explore categories",
     "categoriesTitle": "Top categories",
-    "productCount": "{count, plural, =0 {No products} one {# product} other {# products}}"
+    "productCount": "{count, plural, =0 {No products} one {# product} other {# products}}",
+    "cards": {
+      "wholesale": "Wholesale",
+      "from": "from",
+      "moq": "MOQ: {qty} {unit}",
+      "productCount": "{count, plural, =1 {1 product} other {# products}}",
+      "verified": "Verified",
+      "guaranteed": "Guaranteed"
+    }
   },
   "categories": {
     "metaTitle": "Categories",

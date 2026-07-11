@@ -13,7 +13,15 @@
     "ctaProducts": "مصنوعات دیکھیں",
     "ctaCategories": "زمرے دریافت کریں",
     "categoriesTitle": "اہم زمرے",
-    "productCount": "{count, plural, =0 {کوئی مصنوعات نہیں} one {# مصنوع} other {# مصنوعات}}"
+    "productCount": "{count, plural, =0 {کوئی مصنوعات نہیں} one {# مصنوع} other {# مصنوعات}}",
+    "cards": {
+      "wholesale": "تھوک",
+      "from": "از",
+      "moq": "کم از کم آرڈر: {qty} {unit}",
+      "productCount": "{count} مصنوعات",
+      "verified": "تصدیق شدہ",
+      "guaranteed": "ضمانت شدہ"
+    }
   },
   "categories": {
     "metaTitle": "زمرے",

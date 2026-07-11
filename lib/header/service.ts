@@ -36,8 +36,10 @@ const DEFAULT_SETTINGS: HeaderSettingsDTO = {
   topbarText: 'Shipping from Dubai',
   showTopBar: true,
   showSearch: true,
-  ctaLabel: 'Request quote',
-  ctaHref: '/contact?type=quote'
+  // B2B marketplace CTA — the RFQ-era "Request quote" flow was retired;
+  // buyers now negotiate directly with suppliers.
+  ctaLabel: 'Find suppliers',
+  ctaHref: '/suppliers'
 };
 
 export type NavigationItemType = 'CUSTOM' | 'PAGE';
