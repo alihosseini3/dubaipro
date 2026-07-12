@@ -34,11 +34,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get('authorization') ?? '';
-    if (!auth.startsWith('Bearer ') || auth.slice(7) !== secret) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json({ error: 'cron_not_configured' }, { status: 500 });
+  }
+  const auth = request.headers.get('authorization') ?? '';
+  if (!auth.startsWith('Bearer ') || auth.slice(7) !== secret) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   const now = Date.now();

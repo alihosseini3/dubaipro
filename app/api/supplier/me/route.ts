@@ -15,6 +15,7 @@ import {
   type ValidationErrors
 } from '@/lib/api/validation';
 import { getSupplierContextOrNull } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import {
   getSupplierById,
   updateSupplier,
@@ -64,6 +65,9 @@ type UpdateBody = Record<string, unknown>;
 export async function PUT(request: Request) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

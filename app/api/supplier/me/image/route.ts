@@ -14,6 +14,7 @@ import path from 'node:path';
 
 import { handlePrismaError } from '@/lib/api/errors';
 import { getSupplierContextOrNull } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import {
   ALLOWED_IMAGE_TYPES,
@@ -39,6 +40,9 @@ function parseTarget(request: Request): Target | null {
 export async function POST(request: Request) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
 
   const target = parseTarget(request);
   if (!target) {
@@ -135,6 +139,9 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
 
   const target = parseTarget(request);
   if (!target) {

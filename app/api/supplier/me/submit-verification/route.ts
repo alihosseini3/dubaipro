@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 
 import { handlePrismaError } from '@/lib/api/errors';
 import { getSupplierContextOrNull } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -17,6 +18,9 @@ export const runtime = 'nodejs';
 export async function POST() {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!memberHasPermission(ctx.member.role, 'supplier.verification.manage', ctx.member.permissions)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

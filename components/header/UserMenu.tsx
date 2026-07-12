@@ -11,6 +11,7 @@ import {
   type ReactElement
 } from 'react';
 import type { UserRole } from '@prisma/client';
+import { hasRole } from '@/lib/auth/rbac';
 
 type Props = {
   locale: string;
@@ -198,7 +199,7 @@ export function UserMenu({ locale, user, labels }: Props) {
               </div>
 
               <ul className="py-1">
-                {user.role === 'ADMIN' && (
+                {hasRole(user.role, 'ADMIN', 'SUPER_ADMIN') && (
                   <li role="none">
                     <Link
                       role="menuitem"

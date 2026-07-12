@@ -16,6 +16,7 @@ import {
   type ValidationErrors
 } from '@/lib/api/validation';
 import { getSupplierContextOrNull } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import {
   deleteCertification,
@@ -56,6 +57,9 @@ async function assertOwnership(certId: string, supplierId: string) {
 export async function PUT(request: Request, { params }: Params) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -148,6 +152,9 @@ export async function PUT(request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

@@ -17,6 +17,7 @@ import {
   parseJsonBody
 } from '@/lib/api/validation';
 import { getSupplierContextOrNull } from '@/lib/auth/require-supplier';
+import { memberHasPermission } from '@/lib/auth/permissions';
 import { replyToSupplierReview } from '@/lib/suppliers';
 
 export const runtime = 'nodejs';
@@ -30,6 +31,9 @@ type Body = { content?: unknown };
 export async function POST(request: Request, { params }: Params) {
   const ctx = await getSupplierContextOrNull();
   if (!ctx) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!memberHasPermission(ctx.member.role, 'supplier.profile.manage', ctx.member.permissions)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

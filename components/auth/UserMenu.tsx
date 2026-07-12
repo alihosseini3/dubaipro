@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 import type { UserRole } from '@prisma/client';
+import { hasRole } from '@/lib/auth/rbac';
 
 type Props = {
   locale: string;
@@ -171,7 +172,7 @@ export function UserMenu({ locale, user }: Props) {
           </div>
 
           <ul className="py-1">
-            {user.role === 'ADMIN' && (
+            {hasRole(user.role, 'ADMIN', 'SUPER_ADMIN') && (
               <li role="none">
                 <Link
                   role="menuitem"
