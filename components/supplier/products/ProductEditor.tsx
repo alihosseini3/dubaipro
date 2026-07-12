@@ -74,11 +74,15 @@ const FIELD =
 export function ProductEditor({
   locale,
   productId,
-  categories
+  categories,
+  canSubmit
 }: {
   locale: string;
   productId: string;
   categories: Category[];
+  /** False until the admin approves the supplier's application. Drafting stays
+   *  open; only the hand-off to the review queue is gated (server enforces it). */
+  canSubmit: boolean;
 }) {
   const t = useTranslations('supplier.products');
   const [tab, setTab] = useState<Tab>('info');
@@ -644,16 +648,24 @@ export function ProductEditor({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(product.status === 'DRAFT' || product.status === 'REJECTED') && (
-              <button
-                type="button"
-                disabled={statusAction.loading}
-                onClick={() => handleStatus('submit')}
-                className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-50"
-              >
-                {t('submitForReview')}
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={statusAction.loading || !canSubmit}
+                  onClick={() => handleStatus('submit')}
+                  className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  title={canSubmit ? undefined : t('submitLockedHint')}
+                >
+                  {t('submitForReview')}
+                </button>
+                {!canSubmit && (
+                  <span className="text-xs font-medium text-amber-600">
+                    {t('submitLockedHint')}
+                  </span>
+                )}
+              </>
             )}
             {product.status !== 'ARCHIVED' && (
               <button

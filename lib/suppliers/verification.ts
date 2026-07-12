@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { type Prisma, type SupplierStatus, type SupplierTier } from '@prisma/client';
+import { type Prisma, type SupplierTier } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 

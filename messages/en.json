@@ -2114,7 +2114,8 @@
         "APPROVED": "Approved. It is publicly visible while your publish switch is on.",
         "REJECTED": "Rejected — fix the issues below and resubmit.",
         "ARCHIVED": "Archived products are hidden everywhere. Restore to draft to edit and resubmit."
-      }
+      },
+      "submitLockedHint": "Locked until an admin approves your supplier application."
     },
     "subscription": {
       "title": "Subscription",
