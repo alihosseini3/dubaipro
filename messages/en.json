@@ -271,6 +271,8 @@
     "description": "Description",
     "supplier": "Supplier",
     "viewSupplier": "View supplier",
+    "supplierVerified": "Verified",
+    "supplierGuaranteed": "Guaranteed",
     "bulkAvailable": "Bulk available",
     "bulkHint": "Discounts apply for large orders. Contact the supplier for a custom quote.",
     "moq": "MOQ",
@@ -1839,7 +1841,8 @@
       "messages": "Messages",
       "samples": "Samples",
       "notifications": "Notifications",
-      "subscription": "Subscription"
+      "subscription": "Subscription",
+      "verification": "Verification"
     },
     "overview": {
       "welcomeBack": "Welcome back, {name}",
@@ -2149,6 +2152,37 @@
         "sending": "Sending…",
         "referenceSubmitted": "Reference received — your plan activates as soon as our team confirms the transfer."
       }
+    },
+    "verification": {
+      "title": "Verification",
+      "subtitle": "Upload certifications and request the Verified/Guaranteed trust badge shown to buyers.",
+      "tierSTANDARD": "Standard",
+      "tierVERIFIED": "Verified",
+      "tierGUARANTEED": "Guaranteed",
+      "tierHelpSTANDARD": "Your storefront shows no trust badge yet. Upload your business license or other certifications below, then submit for review.",
+      "tierHelpVERIFIED": "Your documents have been reviewed and approved. The Verified badge is shown on your storefront and product pages.",
+      "tierHelpGUARANTEED": "You have the highest trust tier — the Guaranteed badge is shown across the platform.",
+      "expiresOn": "Expires {date}",
+      "submitForVerification": "Submit for verification",
+      "submitting": "Submitting…",
+      "alreadySubmitted": "Awaiting review",
+      "submittedNotice": "Submitted — status: {status}",
+      "uploadTitle": "Upload a certification",
+      "certType": "Type",
+      "certTitle": "Title",
+      "certIssuer": "Issuer",
+      "certExpiry": "Expiry date (optional)",
+      "certFile": "File (PDF or image)",
+      "uploadCert": "Upload",
+      "uploading": "Uploading…",
+      "uploadFailed": "Upload failed. Please try again.",
+      "myCertifications": "My certifications",
+      "noCertifications": "No certifications uploaded yet.",
+      "certStatusPENDING": "Pending",
+      "certStatusAPPROVED": "Approved",
+      "certStatusREJECTED": "Rejected",
+      "certStatusEXPIRED": "Expired",
+      "delete": "Delete"
     }
   },
   "whatsapp": {
@@ -3107,7 +3141,25 @@
     "accountACTIVE": "Active",
     "accountPENDING_REVIEW": "Pending review",
     "accountSUSPENDED": "Suspended",
-    "accountBLACKLISTED": "Blacklisted"
+    "accountBLACKLISTED": "Blacklisted",
+    "sectionVerification": "Verification & trust tier",
+    "grantTier": "Grant tier",
+    "tierSTANDARD": "Standard",
+    "tierVERIFIED": "Verified",
+    "tierGUARANTEED": "Guaranteed",
+    "verificationExpiresOptional": "Verification expires (optional)",
+    "internalNote": "Note (internal)",
+    "tierApplied": "Tier set to {tier}.",
+    "verificationRejectedNotice": "Verification rejected — tier reset to Standard.",
+    "applyTierAction": "Apply tier: {tier}",
+    "rejectVerification": "Reject verification",
+    "sectionCertifications": "Certifications",
+    "noCertifications": "No certifications submitted yet.",
+    "certStatusPENDING": "Pending",
+    "certStatusAPPROVED": "Approved",
+    "certStatusREJECTED": "Rejected",
+    "certStatusEXPIRED": "Expired",
+    "confirmReject": "Confirm reject"
   },
   "messaging": {
     "inboxTitle": "Messages",

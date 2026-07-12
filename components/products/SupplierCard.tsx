@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
+import { SupplierTierBadge } from '@/components/suppliers/SupplierTierBadge';
 import type { ProductSupplier } from '@/types/product';
 
 type SupplierCardProps = {
@@ -11,6 +12,7 @@ type SupplierCardProps = {
 export function SupplierCard({ supplier, locale }: SupplierCardProps) {
   const t = useTranslations('products');
   const initial = supplier.name?.charAt(0).toUpperCase() ?? '?';
+  const hasRating = (supplier.ratingCount ?? 0) > 0;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -23,12 +25,29 @@ export function SupplierCard({ supplier, locale }: SupplierCardProps) {
           {initial}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">
-            {supplier.name}
-          </p>
-          {supplier.country && (
-            <p className="text-xs text-slate-500">{supplier.country}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {supplier.name}
+            </p>
+            {supplier.tier && (
+              <SupplierTierBadge
+                tier={supplier.tier}
+                compact
+                labels={{
+                  verified: t('supplierVerified'),
+                  guaranteed: t('supplierGuaranteed')
+                }}
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            {supplier.country && <span>{supplier.country}</span>}
+            {hasRating && (
+              <span className="font-medium text-amber-600">
+                ★ {supplier.ratingAvg!.toFixed(1)} ({supplier.ratingCount})
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

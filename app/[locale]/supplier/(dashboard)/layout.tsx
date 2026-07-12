@@ -54,6 +54,15 @@ export default async function SupplierDashboardLayout({ children, params }: Prop
   if (memberHasPermission(member.role, 'supplier.samples.manage', member.permissions)) {
     nav.push({ key: 'samples', label: t('samples'), href: `/${locale}/supplier/samples` });
   }
+  if (
+    memberHasPermission(member.role, 'supplier.verification.manage', member.permissions)
+  ) {
+    nav.push({
+      key: 'verification',
+      label: t('verification'),
+      href: `/${locale}/supplier/verification`
+    });
+  }
   if (memberHasPermission(member.role, 'supplier.team.manage', member.permissions)) {
     nav.push({ key: 'team', label: t('team'), href: `/${locale}/supplier/team` });
   }

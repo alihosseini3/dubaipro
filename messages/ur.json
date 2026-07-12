@@ -271,6 +271,8 @@
     "description": "تفصیل",
     "supplier": "سپلائر",
     "viewSupplier": "سپلائر دیکھیں",
+    "supplierVerified": "تصدیق شدہ",
+    "supplierGuaranteed": "ضمانت شدہ",
     "bulkAvailable": "تھوک دستیاب",
     "bulkHint": "بڑے آرڈرز پر رعایت دستیاب ہے۔ خصوصی قیمت کے لیے سپلائر سے رابطہ کریں۔",
     "moq": "کم از کم آرڈر",
@@ -2735,7 +2737,8 @@
       "messages": "پیغامات",
       "samples": "نمونے",
       "notifications": "اطلاعات",
-      "subscription": "سبسکرپشن"
+      "subscription": "سبسکرپشن",
+      "verification": "تصدیق"
     },
     "overview": {
       "welcomeBack": "خوش آمدید، {name}",
@@ -3045,6 +3048,37 @@
         "sending": "بھیجا جا رہا ہے…",
         "referenceSubmitted": "ٹریکنگ نمبر موصول ہوا — ہماری ٹیم کی تصدیق کے فوراً بعد آپ کا پلان فعال ہو جائے گا۔"
       }
+    },
+    "verification": {
+      "title": "تصدیق",
+      "subtitle": "سرٹیفیکیشنز اپ لوڈ کریں اور خریداروں کو دکھایا جانے والا تصدیق شدہ/ضمانت شدہ بھروسہ بیج حاصل کریں۔",
+      "tierSTANDARD": "اسٹینڈرڈ",
+      "tierVERIFIED": "تصدیق شدہ",
+      "tierGUARANTEED": "ضمانت شدہ",
+      "tierHelpSTANDARD": "آپ کے اسٹور پر ابھی کوئی بھروسہ بیج نہیں۔ اپنا بزنس لائسنس یا دیگر سرٹیفیکیٹس اپ لوڈ کر کے جائزے کے لیے بھیجیں۔",
+      "tierHelpVERIFIED": "آپ کے دستاویزات کا جائزہ لے کر منظور کیا جا چکا ہے۔ تصدیق شدہ بیج آپ کے اسٹور اور پروڈکٹ صفحات پر ظاہر ہوتا ہے۔",
+      "tierHelpGUARANTEED": "آپ کے پاس اعلیٰ ترین بھروسہ درجہ ہے — ضمانت شدہ بیج پورے پلیٹ فارم پر ظاہر ہوتا ہے۔",
+      "expiresOn": "میعاد {date}",
+      "submitForVerification": "تصدیق کے لیے بھیجیں",
+      "submitting": "بھیجا جا رہا ہے…",
+      "alreadySubmitted": "جائزے کا انتظار",
+      "submittedNotice": "بھیج دیا گیا — حیثیت: {status}",
+      "uploadTitle": "سرٹیفیکیٹ اپ لوڈ کریں",
+      "certType": "قسم",
+      "certTitle": "عنوان",
+      "certIssuer": "جاری کنندہ",
+      "certExpiry": "میعاد ختم ہونے کی تاریخ (اختیاری)",
+      "certFile": "فائل (PDF یا تصویر)",
+      "uploadCert": "اپ لوڈ",
+      "uploading": "اپ لوڈ ہو رہا ہے…",
+      "uploadFailed": "اپ لوڈ ناکام ہوا۔ دوبارہ کوشش کریں۔",
+      "myCertifications": "میرے سرٹیفیکیٹس",
+      "noCertifications": "ابھی کوئی سرٹیفیکیٹ اپ لوڈ نہیں ہوا۔",
+      "certStatusPENDING": "زیر التوا",
+      "certStatusAPPROVED": "منظور شدہ",
+      "certStatusREJECTED": "مسترد",
+      "certStatusEXPIRED": "میعاد ختم",
+      "delete": "حذف کریں"
     }
   },
   "adminSuppliers": {
@@ -3106,7 +3140,25 @@
     "accountACTIVE": "فعال",
     "accountPENDING_REVIEW": "جائزہ زیر التواء",
     "accountSUSPENDED": "معطل",
-    "accountBLACKLISTED": "بلاک"
+    "accountBLACKLISTED": "بلاک",
+    "sectionVerification": "تصدیق اور بھروسہ درجہ",
+    "grantTier": "درجہ دیں",
+    "tierSTANDARD": "اسٹینڈرڈ",
+    "tierVERIFIED": "تصدیق شدہ",
+    "tierGUARANTEED": "ضمانت شدہ",
+    "verificationExpiresOptional": "تصدیق کی میعاد (اختیاری)",
+    "internalNote": "نوٹ (اندرونی)",
+    "tierApplied": "درجہ {tier} پر مقرر ہوا۔",
+    "verificationRejectedNotice": "تصدیق مسترد — درجہ اسٹینڈرڈ پر بحال۔",
+    "applyTierAction": "درجہ لاگو کریں: {tier}",
+    "rejectVerification": "تصدیق مسترد کریں",
+    "sectionCertifications": "سرٹیفیکیٹس",
+    "noCertifications": "ابھی کوئی سرٹیفیکیٹ جمع نہیں ہوا۔",
+    "certStatusPENDING": "زیر التوا",
+    "certStatusAPPROVED": "منظور شدہ",
+    "certStatusREJECTED": "مسترد",
+    "certStatusEXPIRED": "میعاد ختم",
+    "confirmReject": "مسترد کی تصدیق"
   },
   "messaging": {
     "inboxTitle": "پیغامات",

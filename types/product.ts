@@ -16,6 +16,9 @@ export type ProductSupplier = {
   name: string;
   country?: string;
   phone?: string | null;
+  tier?: 'STANDARD' | 'VERIFIED' | 'GUARANTEED';
+  ratingAvg?: number;
+  ratingCount?: number;
 };
 
 export type Product = {

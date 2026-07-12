@@ -101,7 +101,18 @@ export async function GET(request: Request) {
         include: {
           category: { select: { id: true, name: true, slug: true } },
           brand: { select: { id: true, name: true, slug: true } },
-          supplier: { select: { id: true, userId: true, name: true, country: true, phone: true } }
+          supplier: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              country: true,
+              phone: true,
+              tier: true,
+              ratingAvg: true,
+              ratingCount: true
+            }
+          }
         }
       }),
       prisma.product.count({ where })

@@ -271,6 +271,8 @@
     "description": "الوصف",
     "supplier": "المورد",
     "viewSupplier": "عرض المورد",
+    "supplierVerified": "موثّق",
+    "supplierGuaranteed": "مضمون",
     "bulkAvailable": "متاح بالجملة",
     "bulkHint": "تُطبَّق خصومات على الطلبات الكبيرة. أرسل طلب عرض سعر للحصول على سعر مخصص.",
     "moq": "الحد الأدنى للطلب",
@@ -2735,7 +2737,8 @@
       "messages": "الرسائل",
       "samples": "العينات",
       "notifications": "الإشعارات",
-      "subscription": "الاشتراك"
+      "subscription": "الاشتراك",
+      "verification": "التحقق"
     },
     "overview": {
       "welcomeBack": "مرحباً بعودتك، {name}",
@@ -3045,6 +3048,37 @@
         "sending": "جارٍ الإرسال…",
         "referenceSubmitted": "تم استلام رقم التتبع — تُفعَّل خطتك فور تأكيد فريقنا للتحويل."
       }
+    },
+    "verification": {
+      "title": "التحقق",
+      "subtitle": "ارفع الشهادات واطلب شارة الثقة (موثّق/مضمون) التي تظهر للمشترين.",
+      "tierSTANDARD": "أساسي",
+      "tierVERIFIED": "موثّق",
+      "tierGUARANTEED": "مضمون",
+      "tierHelpSTANDARD": "متجرك لا يعرض أي شارة ثقة بعد. ارفع رخصة العمل أو شهادات أخرى ثم أرسلها للمراجعة.",
+      "tierHelpVERIFIED": "تمت مراجعة مستنداتك واعتمادها. تظهر شارة \"موثّق\" في متجرك وصفحات منتجاتك.",
+      "tierHelpGUARANTEED": "لديك أعلى مستوى ثقة — تظهر شارة \"مضمون\" في أنحاء المنصة.",
+      "expiresOn": "تنتهي {date}",
+      "submitForVerification": "إرسال للتحقق",
+      "submitting": "جارٍ الإرسال…",
+      "alreadySubmitted": "بانتظار المراجعة",
+      "submittedNotice": "تم الإرسال — الحالة: {status}",
+      "uploadTitle": "رفع شهادة",
+      "certType": "النوع",
+      "certTitle": "العنوان",
+      "certIssuer": "الجهة المصدرة",
+      "certExpiry": "تاريخ الانتهاء (اختياري)",
+      "certFile": "ملف (PDF أو صورة)",
+      "uploadCert": "رفع",
+      "uploading": "جارٍ الرفع…",
+      "uploadFailed": "فشل الرفع. حاول مرة أخرى.",
+      "myCertifications": "شهاداتي",
+      "noCertifications": "لم يتم رفع أي شهادات بعد.",
+      "certStatusPENDING": "قيد الانتظار",
+      "certStatusAPPROVED": "معتمدة",
+      "certStatusREJECTED": "مرفوضة",
+      "certStatusEXPIRED": "منتهية",
+      "delete": "حذف"
     }
   },
   "adminSuppliers": {
@@ -3106,7 +3140,25 @@
     "accountACTIVE": "نشط",
     "accountPENDING_REVIEW": "في انتظار المراجعة",
     "accountSUSPENDED": "موقوف",
-    "accountBLACKLISTED": "محظور"
+    "accountBLACKLISTED": "محظور",
+    "sectionVerification": "التحقق ومستوى الثقة",
+    "grantTier": "منح المستوى",
+    "tierSTANDARD": "أساسي",
+    "tierVERIFIED": "موثّق",
+    "tierGUARANTEED": "مضمون",
+    "verificationExpiresOptional": "انتهاء التحقق (اختياري)",
+    "internalNote": "ملاحظة (داخلية)",
+    "tierApplied": "تم ضبط المستوى إلى {tier}.",
+    "verificationRejectedNotice": "تم رفض التحقق — أُعيد المستوى إلى أساسي.",
+    "applyTierAction": "تطبيق المستوى: {tier}",
+    "rejectVerification": "رفض التحقق",
+    "sectionCertifications": "الشهادات",
+    "noCertifications": "لم يتم إرسال أي شهادات بعد.",
+    "certStatusPENDING": "قيد الانتظار",
+    "certStatusAPPROVED": "معتمدة",
+    "certStatusREJECTED": "مرفوضة",
+    "certStatusEXPIRED": "منتهية",
+    "confirmReject": "تأكيد الرفض"
   },
   "messaging": {
     "inboxTitle": "الرسائل",

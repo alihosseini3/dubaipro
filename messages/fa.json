@@ -272,6 +272,8 @@
     "description": "توضیحات",
     "supplier": "تأمین‌کننده",
     "viewSupplier": "مشاهده تأمین‌کننده",
+    "supplierVerified": "تاییدشده",
+    "supplierGuaranteed": "تضمین‌شده",
     "bulkAvailable": "قابل ارائه به صورت عمده",
     "bulkHint": "برای سفارش عمده تخفیف اعمال می‌شود. جهت قیمت اختصاصی با تامین‌کننده تماس بگیرید.",
     "moq": "حداقل سفارش",
@@ -1822,7 +1824,8 @@
       "messages": "پیام‌ها",
       "samples": "نمونه‌ها",
       "notifications": "اعلان‌ها",
-      "subscription": "اشتراک"
+      "subscription": "اشتراک",
+      "verification": "اعتبارسنجی"
     },
     "overview": {
       "welcomeBack": "خوش آمدید، {name}",
@@ -2132,6 +2135,37 @@
         "sending": "در حال ارسال…",
         "referenceSubmitted": "شماره پیگیری ثبت شد — به‌محض تایید واریز توسط تیم ما، پلن شما فعال می‌شود."
       }
+    },
+    "verification": {
+      "title": "اعتبارسنجی",
+      "subtitle": "گواهینامه‌ها را آپلود کنید و نشان اعتماد تایید‌شده/تضمین‌شده که به خریداران نمایش داده می‌شود را درخواست دهید.",
+      "tierSTANDARD": "استاندارد",
+      "tierVERIFIED": "تاییدشده",
+      "tierGUARANTEED": "تضمین‌شده",
+      "tierHelpSTANDARD": "فروشگاه شما هنوز نشان اعتماد ندارد. مجوز کسب‌وکار یا سایر گواهینامه‌ها را آپلود کنید و برای بازبینی ارسال کنید.",
+      "tierHelpVERIFIED": "مدارک شما بررسی و تایید شده است. نشان تاییدشده در فروشگاه و صفحات محصول شما نمایش داده می‌شود.",
+      "tierHelpGUARANTEED": "شما بالاترین سطح اعتماد را دارید — نشان تضمین‌شده در سراسر پلتفرم نمایش داده می‌شود.",
+      "expiresOn": "انقضا {date}",
+      "submitForVerification": "ارسال برای اعتبارسنجی",
+      "submitting": "در حال ارسال…",
+      "alreadySubmitted": "در انتظار بازبینی",
+      "submittedNotice": "ارسال شد — وضعیت: {status}",
+      "uploadTitle": "آپلود گواهینامه",
+      "certType": "نوع",
+      "certTitle": "عنوان",
+      "certIssuer": "صادرکننده",
+      "certExpiry": "تاریخ انقضا (اختیاری)",
+      "certFile": "فایل (PDF یا تصویر)",
+      "uploadCert": "آپلود",
+      "uploading": "در حال آپلود…",
+      "uploadFailed": "آپلود ناموفق بود. دوباره تلاش کنید.",
+      "myCertifications": "گواهینامه‌های من",
+      "noCertifications": "هنوز گواهینامه‌ای آپلود نشده.",
+      "certStatusPENDING": "در انتظار",
+      "certStatusAPPROVED": "تاییدشده",
+      "certStatusREJECTED": "ردشده",
+      "certStatusEXPIRED": "منقضی",
+      "delete": "حذف"
     }
   },
   "chatHub": {
@@ -3108,7 +3142,25 @@
     "accountACTIVE": "فعال",
     "accountPENDING_REVIEW": "در انتظار بررسی",
     "accountSUSPENDED": "معلق",
-    "accountBLACKLISTED": "مسدود"
+    "accountBLACKLISTED": "مسدود",
+    "sectionVerification": "اعتبارسنجی و سطح اعتماد",
+    "grantTier": "اعطای سطح",
+    "tierSTANDARD": "استاندارد",
+    "tierVERIFIED": "تاییدشده",
+    "tierGUARANTEED": "تضمین‌شده",
+    "verificationExpiresOptional": "انقضای اعتبارسنجی (اختیاری)",
+    "internalNote": "یادداشت (داخلی)",
+    "tierApplied": "سطح به {tier} تنظیم شد.",
+    "verificationRejectedNotice": "اعتبارسنجی رد شد — سطح به استاندارد بازگشت.",
+    "applyTierAction": "اعمال سطح: {tier}",
+    "rejectVerification": "رد اعتبارسنجی",
+    "sectionCertifications": "گواهینامه‌ها",
+    "noCertifications": "هنوز گواهینامه‌ای ارسال نشده.",
+    "certStatusPENDING": "در انتظار",
+    "certStatusAPPROVED": "تاییدشده",
+    "certStatusREJECTED": "ردشده",
+    "certStatusEXPIRED": "منقضی",
+    "confirmReject": "تایید رد"
   },
   "messaging": {
     "inboxTitle": "پیام‌ها",

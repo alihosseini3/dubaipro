@@ -57,7 +57,18 @@ export async function GET(_request: Request, context: RouteContext) {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
-        supplier: { select: { id: true, userId: true, name: true, country: true, phone: true } }
+        supplier: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            country: true,
+            phone: true,
+            tier: true,
+            ratingAvg: true,
+            ratingCount: true
+          }
+        }
       }
     });
 

@@ -6,6 +6,8 @@ import { AdminCard } from '@/components/admin/AdminCard';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { prisma } from '@/lib/prisma';
 import { SupplierApplicationActions } from '@/components/admin/SupplierApplicationActions';
+import { SupplierVerificationPanel } from '@/components/admin/SupplierVerificationPanel';
+import { SupplierCertificationsReview } from '@/components/admin/SupplierCertificationsReview';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -21,6 +23,20 @@ export default async function AdminSupplierApplicationDetailPage({ params }: Pro
       documents: { select: { id: true, type: true, fileUrl: true } },
       primaryCategory: { select: { name: true } },
       secondaryCategories: { include: { category: { select: { name: true } } } },
+      certifications: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          issuer: true,
+          fileUrl: true,
+          status: true,
+          issuedAt: true,
+          expiresAt: true,
+          reviewerNote: true
+        }
+      }
     },
   });
   if (!supplier) notFound();
@@ -116,10 +132,24 @@ export default async function AdminSupplierApplicationDetailPage({ params }: Pro
               </ul>
             )}
           </AdminCard>
+
+          <SupplierCertificationsReview
+            supplierId={supplier.id}
+            certifications={supplier.certifications.map((c) => ({
+              ...c,
+              issuedAt: c.issuedAt?.toISOString() ?? null,
+              expiresAt: c.expiresAt?.toISOString() ?? null
+            }))}
+          />
         </div>
 
         {/* Right: actions */}
-        <div>
+        <div className="space-y-6">
+          <SupplierVerificationPanel
+            supplierId={supplier.id}
+            currentTier={supplier.tier}
+            verificationExpiresAt={supplier.verificationExpiresAt?.toISOString() ?? null}
+          />
           <SupplierApplicationActions
             locale={locale}
             supplierId={supplier.id}
