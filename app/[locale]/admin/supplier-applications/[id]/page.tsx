@@ -151,11 +151,9 @@ export default async function AdminSupplierApplicationDetailPage({ params }: Pro
             verificationExpiresAt={supplier.verificationExpiresAt?.toISOString() ?? null}
           />
           <SupplierApplicationActions
-            locale={locale}
             supplierId={supplier.id}
             onboardingStatus={supplier.onboardingStatus}
             accountStatus={supplier.status}
-            verified={supplier.verified}
             canListProducts={supplier.canListProducts}
           />
         </div>

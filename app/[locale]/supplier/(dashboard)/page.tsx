@@ -10,6 +10,7 @@ import { getDisplayCurrency } from '@/lib/currency/context';
 import { PriceView } from '@/components/currency/PriceView';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AdminCard } from '@/components/admin/AdminCard';
+import { ApplicationStatusBanner } from '@/components/supplier/ApplicationStatusBanner';
 
 export const metadata: Metadata = { title: 'Overview | Supplier Dashboard' };
 
@@ -51,6 +52,8 @@ export default async function SupplierOverviewPage({ params }: Props) {
         select: {
           slug: true,
           status: true,
+          onboardingStatus: true,
+          canListProducts: true,
           logoUrl: true,
           description: true,
           bannerUrl: true,
@@ -88,6 +91,18 @@ export default async function SupplierOverviewPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Why you can't publish yet + what to do about it. Renders nothing
+          once the application is approved. */}
+      {profile && (
+        <ApplicationStatusBanner
+          locale={locale}
+          supplierId={supplier.id}
+          onboardingStatus={profile.onboardingStatus}
+          status={profile.status}
+          canListProducts={profile.canListProducts}
+        />
+      )}
+
       {/* Welcome header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

@@ -2183,6 +2183,23 @@
       "certStatusREJECTED": "Rejected",
       "certStatusEXPIRED": "Expired",
       "delete": "Delete"
+    },
+    "applicationStatus": {
+      "not_submittedTitle": "Your supplier application is incomplete",
+      "not_submittedBody": "You can prepare product drafts now, but publishing unlocks only after you submit your application and an admin approves it.",
+      "pending_reviewTitle": "Your application is under review",
+      "pending_reviewBody": "Keep preparing your catalog — you can create drafts, set volume pricing and upload media. Publishing unlocks as soon as an admin approves your application.",
+      "rejectedTitle": "Your application was rejected",
+      "rejectedBody": "Fix the issues below and resubmit. You can keep your product drafts — nothing is lost.",
+      "not_grantedTitle": "Product listing is disabled",
+      "not_grantedBody": "Your account is approved but listing rights are currently on hold. Contact the DubaiPro team.",
+      "suspendedTitle": "Your supplier account is suspended",
+      "suspendedBody": "Contact the DubaiPro team to restore your account.",
+      "blacklistedTitle": "Your supplier account is blocked",
+      "blacklistedBody": "Contact the DubaiPro team for more information.",
+      "rejectionReason": "Reason",
+      "fixAndResubmit": "Fix and resubmit",
+      "completeApplication": "Complete my application"
     }
   },
   "whatsapp": {
@@ -3159,7 +3176,15 @@
     "certStatusAPPROVED": "Approved",
     "certStatusREJECTED": "Rejected",
     "certStatusEXPIRED": "Expired",
-    "confirmReject": "Confirm reject"
+    "confirmReject": "Confirm reject",
+    "applicationDecision": "Application decision",
+    "approveHint": "Approving activates the account and grants product-listing rights immediately. The supplier is notified.",
+    "approveApplication": "Approve application",
+    "rejectApplication": "Reject application",
+    "approvedNotice": "Approved — the supplier can now publish products.",
+    "rejectedNotice": "Rejected — the supplier has been notified with your reason.",
+    "listingGranted": "Can list products",
+    "listingNotGranted": "Cannot list products"
   },
   "messaging": {
     "inboxTitle": "Messages",
@@ -3250,7 +3275,9 @@
       "broadcast_announcement": "{message}",
       "subscription_assigned": "Your plan changed to {planCode} (valid until {periodEnd}).",
       "subscription_expiring": "Your {planCode} plan expires on {periodEnd}. Renew to keep your limits.",
-      "subscription_expired": "Your {planCode} plan expired — your account moved to FREE."
+      "subscription_expired": "Your {planCode} plan expired — your account moved to FREE.",
+      "supplier_approved": "Your supplier application was approved — you can now publish products.",
+      "supplier_rejected": "Your supplier application was rejected: {reason}"
     },
     "emails": {
       "product_approved_subject": "Your product \"{productTitle}\" was approved",
@@ -3266,7 +3293,11 @@
       "subscription_expiring_subject": "Your {planCode} plan expires on {periodEnd}",
       "subscription_expiring_body": "Your {planCode} subscription ends on {periodEnd}. Renew it to keep your current limits — otherwise your account moves to the FREE plan.",
       "subscription_expired_subject": "Your {planCode} plan has expired",
-      "subscription_expired_body": "Your {planCode} subscription expired and your account moved to the FREE plan. Existing products stay visible; new creations follow the FREE limits."
+      "subscription_expired_body": "Your {planCode} subscription expired and your account moved to the FREE plan. Existing products stay visible; new creations follow the FREE limits.",
+      "supplier_approved_subject": "Your DubaiPro supplier application was approved",
+      "supplier_approved_body": "Good news — {supplierName} is approved. You can now publish products, receive buyer inquiries and sample requests, and chat with buyers directly. Sign in to your supplier panel to submit your first product for review.",
+      "supplier_rejected_subject": "Your DubaiPro supplier application needs changes",
+      "supplier_rejected_body": "The application for {supplierName} was not approved.\nReason: {reason}\nFix the issues and resubmit from your supplier panel — your product drafts are kept."
     }
   }
 }

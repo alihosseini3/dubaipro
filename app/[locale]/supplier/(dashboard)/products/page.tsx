@@ -5,6 +5,7 @@ import { ProductStatus, type Prisma } from '@prisma/client';
 
 import { requireSupplier } from '@/lib/auth/require-supplier';
 import { prisma } from '@/lib/prisma';
+import { ApplicationStatusBanner } from '@/components/supplier/ApplicationStatusBanner';
 
 const STATUS_ORDER: ProductStatus[] = [
   ProductStatus.DRAFT,
@@ -49,7 +50,7 @@ export default async function SupplierProductsPage({
       : {})
   };
 
-  const [products, stats] = await Promise.all([
+  const [products, stats, gateState] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -75,6 +76,10 @@ export default async function SupplierProductsPage({
       by: ['status'],
       where: { supplierId: supplier.id },
       _count: { _all: true }
+    }),
+    prisma.supplier.findUnique({
+      where: { id: supplier.id },
+      select: { onboardingStatus: true, status: true, canListProducts: true }
     })
   ]);
 
@@ -86,6 +91,18 @@ export default async function SupplierProductsPage({
 
   return (
     <div className="space-y-6">
+      {/* Drafting stays open while the application is pending — this explains
+          why the "submit for review" button won't work yet. */}
+      {gateState && (
+        <ApplicationStatusBanner
+          locale={locale}
+          supplierId={supplier.id}
+          onboardingStatus={gateState.onboardingStatus}
+          status={gateState.status}
+          canListProducts={gateState.canListProducts}
+        />
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">

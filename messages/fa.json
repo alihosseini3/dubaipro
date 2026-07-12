@@ -2166,6 +2166,23 @@
       "certStatusREJECTED": "ردشده",
       "certStatusEXPIRED": "منقضی",
       "delete": "حذف"
+    },
+    "applicationStatus": {
+      "not_submittedTitle": "درخواست تامین‌کنندگی شما ناقص است",
+      "not_submittedBody": "همین حالا می‌توانید محصولات را به‌صورت پیش‌نویس آماده کنید، ولی انتشار فقط بعد از ثبت درخواست و تایید مدیر باز می‌شود.",
+      "pending_reviewTitle": "درخواست شما در حال بررسی است",
+      "pending_reviewBody": "کاتالوگ خود را آماده کنید — می‌توانید پیش‌نویس بسازید، قیمت پلکانی بگذارید و تصویر بارگذاری کنید. انتشار به‌محض تایید مدیر باز می‌شود.",
+      "rejectedTitle": "درخواست شما رد شد",
+      "rejectedBody": "موارد زیر را اصلاح و دوباره ارسال کنید. پیش‌نویس محصولات شما حفظ می‌شود — چیزی از دست نمی‌رود.",
+      "not_grantedTitle": "درج کالا غیرفعال است",
+      "not_grantedBody": "حساب شما تایید شده ولی حق درج کالا فعلا متوقف است. با تیم DubaiPro تماس بگیرید.",
+      "suspendedTitle": "حساب تامین‌کنندگی شما تعلیق شده",
+      "suspendedBody": "برای بازگردانی حساب با تیم DubaiPro تماس بگیرید.",
+      "blacklistedTitle": "حساب تامین‌کنندگی شما مسدود شده",
+      "blacklistedBody": "برای اطلاعات بیشتر با تیم DubaiPro تماس بگیرید.",
+      "rejectionReason": "دلیل",
+      "fixAndResubmit": "اصلاح و ارسال مجدد",
+      "completeApplication": "تکمیل درخواست من"
     }
   },
   "chatHub": {
@@ -3160,7 +3177,15 @@
     "certStatusAPPROVED": "تاییدشده",
     "certStatusREJECTED": "ردشده",
     "certStatusEXPIRED": "منقضی",
-    "confirmReject": "تایید رد"
+    "confirmReject": "تایید رد",
+    "applicationDecision": "تصمیم درخواست",
+    "approveHint": "تایید، حساب را فعال می‌کند و بلافاصله حق درج کالا می‌دهد. به تامین‌کننده اطلاع داده می‌شود.",
+    "approveApplication": "تایید درخواست",
+    "rejectApplication": "رد درخواست",
+    "approvedNotice": "تایید شد — تامین‌کننده اکنون می‌تواند کالا منتشر کند.",
+    "rejectedNotice": "رد شد — دلیل شما به تامین‌کننده اطلاع داده شد.",
+    "listingGranted": "مجاز به درج کالا",
+    "listingNotGranted": "غیرمجاز به درج کالا"
   },
   "messaging": {
     "inboxTitle": "پیام‌ها",
@@ -3251,7 +3276,9 @@
       "broadcast_announcement": "{message}",
       "subscription_assigned": "پلن شما به {planCode} تغییر کرد (اعتبار تا {periodEnd}).",
       "subscription_expiring": "پلن {planCode} شما در {periodEnd} منقضی می‌شود. برای حفظ سقف‌ها تمدید کنید.",
-      "subscription_expired": "پلن {planCode} شما منقضی شد — حساب به پلن رایگان منتقل شد."
+      "subscription_expired": "پلن {planCode} شما منقضی شد — حساب به پلن رایگان منتقل شد.",
+      "supplier_approved": "درخواست تامین‌کنندگی شما تایید شد — اکنون می‌توانید کالا منتشر کنید.",
+      "supplier_rejected": "درخواست تامین‌کنندگی شما رد شد: {reason}"
     },
     "emails": {
       "product_approved_subject": "محصول «{productTitle}» تایید شد",
@@ -3267,7 +3294,11 @@
       "subscription_expiring_subject": "پلن {planCode} شما در {periodEnd} منقضی می‌شود",
       "subscription_expiring_body": "اشتراک {planCode} شما در {periodEnd} پایان می‌یابد. برای حفظ سقف‌های فعلی تمدید کنید — وگرنه حساب به پلن رایگان منتقل می‌شود.",
       "subscription_expired_subject": "پلن {planCode} شما منقضی شد",
-      "subscription_expired_body": "اشتراک {planCode} شما منقضی شد و حساب به پلن رایگان منتقل شد. محصولات موجود قابل مشاهده می‌مانند؛ ساخت جدید تابع سقف‌های پلن رایگان است."
+      "subscription_expired_body": "اشتراک {planCode} شما منقضی شد و حساب به پلن رایگان منتقل شد. محصولات موجود قابل مشاهده می‌مانند؛ ساخت جدید تابع سقف‌های پلن رایگان است.",
+      "supplier_approved_subject": "درخواست تامین‌کنندگی شما در DubaiPro تایید شد",
+      "supplier_approved_body": "خبر خوب — {supplierName} تایید شد. اکنون می‌توانید کالا منتشر کنید، استعلام و درخواست نمونه دریافت کنید و مستقیم با خریداران چت کنید. وارد پنل تامین‌کننده شوید و اولین محصول خود را برای بازبینی ارسال کنید.",
+      "supplier_rejected_subject": "درخواست تامین‌کنندگی شما در DubaiPro نیاز به اصلاح دارد",
+      "supplier_rejected_body": "درخواست {supplierName} تایید نشد.\nدلیل: {reason}\nموارد را اصلاح و از پنل تامین‌کننده دوباره ارسال کنید — پیش‌نویس محصولات شما حفظ می‌شود."
     }
   }
 }

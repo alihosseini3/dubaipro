@@ -6,114 +6,185 @@ import { useTranslations } from 'next-intl';
 import type { SupplierOnboardingStatus } from '@prisma/client';
 
 import { AdminCard } from '@/components/admin/AdminCard';
+import { useApiMutation } from '@/hooks/use-api';
 
 type Props = {
-  locale: string;
   supplierId: string;
   onboardingStatus: SupplierOnboardingStatus;
   accountStatus: string;
-  verified: boolean;
   canListProducts: boolean;
 };
 
-const ONBOARDING_STATUSES: SupplierOnboardingStatus[] = ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'];
+/** Account-level controls that stay independent of the application decision. */
 const ACCOUNT_STATUSES = ['ACTIVE', 'PENDING_REVIEW', 'SUSPENDED', 'BLACKLISTED'];
 
+const ONBOARDING_TONE: Record<SupplierOnboardingStatus, string> = {
+  DRAFT: 'bg-slate-100 text-slate-600',
+  PENDING: 'bg-amber-50 text-amber-700',
+  APPROVED: 'bg-emerald-50 text-emerald-700',
+  REJECTED: 'bg-rose-50 text-rose-700'
+};
+
+/**
+ * Application review + account status.
+ *
+ * The approve/reject decision is one atomic call to
+ * /api/admin/supplier-applications/[id]/review — approving grants product
+ * listing rights, resolves the verification request, writes the audit trail,
+ * and notifies the supplier. The old manual `verified` and `canListProducts`
+ * toggles are gone: `verified`/tier is owned by SupplierVerificationPanel, and
+ * listing rights are now a consequence of approval.
+ */
 export function SupplierApplicationActions({
-  locale,
   supplierId,
   onboardingStatus: initOnboarding,
   accountStatus: initAccount,
-  verified: initVerified,
-  canListProducts: initCanList,
+  canListProducts: initCanList
 }: Props) {
   const t = useTranslations('adminSuppliers');
   const router = useRouter();
 
-  const [onboardingStatus, setOnboardingStatus] = useState(initOnboarding);
-  const [accountStatus, setAccountStatus]       = useState(initAccount);
-  const [verified, setVerified]                 = useState(initVerified);
-  const [canList, setCanList]                   = useState(initCanList);
-  const [saving, setSaving]                     = useState(false);
-  const [msg, setMsg]                           = useState<{ ok: boolean; text: string } | null>(null);
-  const [rejectReason, setRejectReason]         = useState('');
+  const [onboarding, setOnboarding] = useState(initOnboarding);
+  const [accountStatus, setAccountStatus] = useState(initAccount);
+  const [canList, setCanList] = useState(initCanList);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
-  async function patch(payload: Record<string, unknown>) {
-    setSaving(true);
-    setMsg(null);
+  const review = useApiMutation<
+    { action: 'approve' | 'reject'; reason?: string },
+    {
+      data: {
+        onboardingStatus: SupplierOnboardingStatus;
+        status: string;
+        canListProducts: boolean;
+      };
+    }
+  >(`/api/admin/supplier-applications/${supplierId}/review`, 'POST');
+
+  const patchStatus = useApiMutation<{ accountStatus: string }, unknown>(
+    `/api/admin/supplier-applications/${supplierId}`,
+    'PATCH'
+  );
+
+  async function decide(action: 'approve' | 'reject') {
+    setNotice(null);
     try {
-      const res = await fetch(`/api/admin/supplier-applications/${supplierId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!res.ok) throw new Error((json.error as string) ?? t('actionFailed'));
-      setMsg({ ok: true, text: t('actionSuccess') });
+      const result = await review.mutate(
+        action === 'reject' ? { action, reason: reason.trim() } : { action }
+      );
+      setOnboarding(result.data.onboardingStatus);
+      setAccountStatus(result.data.status);
+      setCanList(result.data.canListProducts);
+      setRejecting(false);
+      setReason('');
+      setNotice(action === 'approve' ? t('approvedNotice') : t('rejectedNotice'));
       router.refresh();
-    } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : t('actionFailed') });
-    } finally {
-      setSaving(false);
+    } catch {
+      /* review.error rendered below */
     }
   }
+
+  async function changeAccountStatus(next: string) {
+    setNotice(null);
+    try {
+      await patchStatus.mutate({ accountStatus: next });
+      setAccountStatus(next);
+      setNotice(t('actionSuccess'));
+      router.refresh();
+    } catch {
+      /* patchStatus.error rendered below */
+    }
+  }
+
+  const busy = review.loading || patchStatus.loading;
+  const error = review.error ?? patchStatus.error;
 
   return (
     <AdminCard title={t('sectionStatus')}>
       <div className="space-y-5">
-        {/* Onboarding status */}
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
-            {t('changeOnboarding')}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {ONBOARDING_STATUSES.map((s) => (
-              <button
-                key={s}
-                disabled={saving || onboardingStatus === s}
-                onClick={() => {
-                  if (s === 'REJECTED' && !rejectReason) {
-                    const reason = window.prompt(t('rejectReason') ?? 'Reason (optional)') ?? '';
-                    setRejectReason(reason);
-                    setOnboardingStatus(s);
-                    void patch({ onboardingStatus: s, rejectReason: reason });
-                  } else {
-                    setOnboardingStatus(s);
-                    void patch({ onboardingStatus: s });
-                  }
-                }}
-                className={[
-                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
-                  onboardingStatus === s
-                    ? 'bg-orange-500 text-white shadow-sm'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40',
-                ].join(' ')}
-              >
-                {t(`status${s}` as Parameters<typeof t>[0])}
-              </button>
-            ))}
-          </div>
+        {/* Current application state */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${ONBOARDING_TONE[onboarding]}`}
+          >
+            {t(`status${onboarding}` as Parameters<typeof t>[0])}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              canList ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+            }`}
+          >
+            {canList ? t('listingGranted') : t('listingNotGranted')}
+          </span>
         </div>
 
-        {/* Account status */}
+        {/* The atomic decision */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('applicationDecision')}
+          </p>
+          <p className="mb-3 text-xs text-slate-500">{t('approveHint')}</p>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy || onboarding === 'APPROVED'}
+              onClick={() => decide('approve')}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+            >
+              {review.loading ? t('saving') : t('approveApplication')}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setRejecting((v) => !v)}
+              className="rounded-lg border border-rose-300 px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-40"
+            >
+              {t('rejectApplication')}
+            </button>
+          </div>
+
+          {rejecting && (
+            <div className="mt-2 space-y-2">
+              <textarea
+                rows={2}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={t('rejectReason')}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={busy || reason.trim().length < 3}
+                onClick={() => decide('reject')}
+                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-40"
+              >
+                {t('confirmReject')}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <hr className="border-slate-100" />
+
+        {/* Account status — independent of the application decision */}
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('changeStatus')}
           </label>
           <div className="flex flex-wrap gap-2">
             {ACCOUNT_STATUSES.map((s) => (
               <button
                 key={s}
-                disabled={saving || accountStatus === s}
-                onClick={() => {
-                  setAccountStatus(s);
-                  void patch({ accountStatus: s });
-                }}
+                type="button"
+                disabled={busy || accountStatus === s}
+                onClick={() => changeAccountStatus(s)}
                 className={[
                   'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
                   accountStatus === s
                     ? 'bg-slate-800 text-white shadow-sm'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40',
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40'
                 ].join(' ')}
               >
                 {t(`account${s}` as Parameters<typeof t>[0])}
@@ -122,77 +193,9 @@ export function SupplierApplicationActions({
           </div>
         </div>
 
-        <hr className="border-slate-100" />
-
-        {/* Toggles */}
-        <div className="space-y-3">
-          <Toggle
-            label={t('verifiedToggle')}
-            checked={verified}
-            disabled={saving}
-            onChange={(v) => {
-              setVerified(v);
-              void patch({ verified: v });
-            }}
-          />
-          <Toggle
-            label={t('allowProductsToggle')}
-            checked={canList}
-            disabled={saving}
-            onChange={(v) => {
-              setCanList(v);
-              void patch({ canListProducts: v });
-            }}
-          />
-        </div>
-
-        {/* Feedback */}
-        {saving && (
-          <p className="text-xs text-slate-500">{t('saving')}</p>
-        )}
-        {msg && (
-          <p className={`text-xs font-medium ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
-            {msg.text}
-          </p>
-        )}
+        {error && <p className="text-xs font-medium text-rose-600">{error.message}</p>}
+        {notice && <p className="text-xs font-medium text-emerald-600">{notice}</p>}
       </div>
     </AdminCard>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  disabled: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3">
-      <span className="text-sm text-slate-700">{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={[
-          'relative inline-flex h-5 w-9 flex-none rounded-full border-2 border-transparent transition-colors',
-          checked ? 'bg-orange-500' : 'bg-slate-200',
-          'disabled:opacity-40',
-        ].join(' ')}
-      >
-        <span
-          className={[
-            'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-4' : 'translate-x-0',
-          ].join(' ')}
-        />
-      </button>
-    </label>
   );
 }

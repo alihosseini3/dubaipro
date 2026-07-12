@@ -431,13 +431,35 @@ export async function applySupplierRegistration(
 
   if (payload.submit) {
     await assertSubmittable(supplierId);
-    await prisma.supplier.update({
+
+    // Only a DRAFT or a REJECTED application may be (re)submitted. Guarding
+    // APPROVED matters: without it an approved supplier who edits their
+    // profile and hits submit would fall back to PENDING and silently lose
+    // the listing rights granted at approval. PENDING is a no-op (already
+    // queued) rather than an error, so a double-click is harmless.
+    const current = await prisma.supplier.findUniqueOrThrow({
       where: { id: supplierId },
-      data: { onboardingStatus: 'PENDING' },
+      select: { onboardingStatus: true },
     });
-    await prisma.supplierVerification.create({
-      data: { supplierId, status: 'PENDING' },
-    });
+
+    if (current.onboardingStatus === 'APPROVED') {
+      throw new SupplierRegistrationError(
+        'Your application is already approved. Edit your profile from the supplier dashboard.',
+        409
+      );
+    }
+
+    if (current.onboardingStatus !== 'PENDING') {
+      await prisma.supplier.update({
+        where: { id: supplierId },
+        data: { onboardingStatus: 'PENDING' },
+      });
+      // Fresh review request — a resubmission after a rejection must land in
+      // the admin queue again.
+      await prisma.supplierVerification.create({
+        data: { supplierId, status: 'PENDING' },
+      });
+    }
   }
 
   const finalRow = await prisma.supplier.findUniqueOrThrow({

@@ -3079,6 +3079,23 @@
       "certStatusREJECTED": "مسترد",
       "certStatusEXPIRED": "میعاد ختم",
       "delete": "حذف کریں"
+    },
+    "applicationStatus": {
+      "not_submittedTitle": "آپ کی سپلائر درخواست نامکمل ہے",
+      "not_submittedBody": "آپ ابھی پروڈکٹ ڈرافٹ تیار کر سکتے ہیں، لیکن اشاعت صرف درخواست جمع کرانے اور ایڈمن کی منظوری کے بعد کھلے گی۔",
+      "pending_reviewTitle": "آپ کی درخواست زیر جائزہ ہے",
+      "pending_reviewBody": "اپنا کیٹلاگ تیار کرتے رہیں — آپ ڈرافٹ بنا سکتے ہیں، مقداری قیمت مقرر کر سکتے ہیں اور تصاویر اپ لوڈ کر سکتے ہیں۔ ایڈمن کی منظوری کے فوراً بعد اشاعت کھل جائے گی۔",
+      "rejectedTitle": "آپ کی درخواست مسترد ہو گئی",
+      "rejectedBody": "نیچے دیے گئے مسائل درست کر کے دوبارہ بھیجیں۔ آپ کے پروڈکٹ ڈرافٹ محفوظ رہیں گے — کچھ ضائع نہیں ہوگا۔",
+      "not_grantedTitle": "پروڈکٹ درج کرنا غیر فعال ہے",
+      "not_grantedBody": "آپ کا اکاؤنٹ منظور شدہ ہے لیکن درج کرنے کے حقوق فی الحال روکے گئے ہیں۔ DubaiPro ٹیم سے رابطہ کریں۔",
+      "suspendedTitle": "آپ کا سپلائر اکاؤنٹ معطل ہے",
+      "suspendedBody": "اکاؤنٹ بحال کرنے کے لیے DubaiPro ٹیم سے رابطہ کریں۔",
+      "blacklistedTitle": "آپ کا سپلائر اکاؤنٹ بلاک ہے",
+      "blacklistedBody": "مزید معلومات کے لیے DubaiPro ٹیم سے رابطہ کریں۔",
+      "rejectionReason": "وجہ",
+      "fixAndResubmit": "درست کر کے دوبارہ بھیجیں",
+      "completeApplication": "میری درخواست مکمل کریں"
     }
   },
   "adminSuppliers": {
@@ -3158,7 +3175,15 @@
     "certStatusAPPROVED": "منظور شدہ",
     "certStatusREJECTED": "مسترد",
     "certStatusEXPIRED": "میعاد ختم",
-    "confirmReject": "مسترد کی تصدیق"
+    "confirmReject": "مسترد کی تصدیق",
+    "applicationDecision": "درخواست کا فیصلہ",
+    "approveHint": "منظوری اکاؤنٹ کو فعال کرتی ہے اور فوراً پروڈکٹ درج کرنے کا حق دیتی ہے۔ سپلائر کو اطلاع دی جاتی ہے۔",
+    "approveApplication": "درخواست منظور کریں",
+    "rejectApplication": "درخواست مسترد کریں",
+    "approvedNotice": "منظور — سپلائر اب مصنوعات شائع کر سکتا ہے۔",
+    "rejectedNotice": "مسترد — سپلائر کو آپ کی وجہ کے ساتھ اطلاع دی گئی۔",
+    "listingGranted": "مصنوعات درج کر سکتا ہے",
+    "listingNotGranted": "مصنوعات درج نہیں کر سکتا"
   },
   "messaging": {
     "inboxTitle": "پیغامات",
@@ -3249,7 +3274,9 @@
       "broadcast_announcement": "{message}",
       "subscription_assigned": "آپ کا پلان {planCode} ہو گیا ({periodEnd} تک درست)۔",
       "subscription_expiring": "آپ کا {planCode} پلان {periodEnd} کو ختم ہو رہا ہے۔ حدیں برقرار رکھنے کے لیے تجدید کریں۔",
-      "subscription_expired": "آپ کا {planCode} پلان ختم ہو گیا — اکاؤنٹ مفت پلان پر منتقل ہو گیا۔"
+      "subscription_expired": "آپ کا {planCode} پلان ختم ہو گیا — اکاؤنٹ مفت پلان پر منتقل ہو گیا۔",
+      "supplier_approved": "آپ کی سپلائر درخواست منظور ہو گئی — اب آپ مصنوعات شائع کر سکتے ہیں۔",
+      "supplier_rejected": "آپ کی سپلائر درخواست مسترد ہوئی: {reason}"
     },
     "emails": {
       "product_approved_subject": "آپ کی پروڈکٹ \"{productTitle}\" منظور ہو گئی",
@@ -3265,7 +3292,11 @@
       "subscription_expiring_subject": "آپ کا {planCode} پلان {periodEnd} کو ختم ہو رہا ہے",
       "subscription_expiring_body": "آپ کی {planCode} سبسکرپشن {periodEnd} کو ختم ہو رہی ہے۔ موجودہ حدیں برقرار رکھنے کے لیے تجدید کریں — ورنہ اکاؤنٹ مفت پلان پر منتقل ہو جائے گا۔",
       "subscription_expired_subject": "آپ کا {planCode} پلان ختم ہو گیا",
-      "subscription_expired_body": "آپ کی {planCode} سبسکرپشن ختم ہو گئی اور اکاؤنٹ مفت پلان پر منتقل ہو گیا۔ موجودہ مصنوعات نظر آتی رہیں گی؛ نئی تخلیقات مفت پلان کی حدود کے تابع ہوں گی۔"
+      "subscription_expired_body": "آپ کی {planCode} سبسکرپشن ختم ہو گئی اور اکاؤنٹ مفت پلان پر منتقل ہو گیا۔ موجودہ مصنوعات نظر آتی رہیں گی؛ نئی تخلیقات مفت پلان کی حدود کے تابع ہوں گی۔",
+      "supplier_approved_subject": "آپ کی DubaiPro سپلائر درخواست منظور ہو گئی",
+      "supplier_approved_body": "خوشخبری — {supplierName} منظور ہو گیا۔ اب آپ مصنوعات شائع کر سکتے ہیں، خریداروں کی انکوائریاں اور نمونہ درخواستیں وصول کر سکتے ہیں اور براہِ راست چیٹ کر سکتے ہیں۔ سپلائر پینل میں لاگ اِن کریں اور اپنی پہلی پروڈکٹ جائزے کے لیے بھیجیں۔",
+      "supplier_rejected_subject": "آپ کی DubaiPro سپلائر درخواست میں تبدیلی درکار ہے",
+      "supplier_rejected_body": "{supplierName} کی درخواست منظور نہیں ہوئی۔\nوجہ: {reason}\nمسائل درست کر کے سپلائر پینل سے دوبارہ بھیجیں — آپ کے پروڈکٹ ڈرافٹ محفوظ رہیں گے۔"
     }
   }
 }

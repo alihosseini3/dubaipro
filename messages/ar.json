@@ -3079,6 +3079,23 @@
       "certStatusREJECTED": "مرفوضة",
       "certStatusEXPIRED": "منتهية",
       "delete": "حذف"
+    },
+    "applicationStatus": {
+      "not_submittedTitle": "طلب التوريد الخاص بك غير مكتمل",
+      "not_submittedBody": "يمكنك تجهيز مسودات المنتجات الآن، لكن النشر يُفتح فقط بعد إرسال طلبك واعتماد المشرف له.",
+      "pending_reviewTitle": "طلبك قيد المراجعة",
+      "pending_reviewBody": "واصل تجهيز الكتالوج — يمكنك إنشاء مسودات وضبط التسعير بالجملة ورفع الصور. يُفتح النشر فور اعتماد المشرف لطلبك.",
+      "rejectedTitle": "تم رفض طلبك",
+      "rejectedBody": "عالج الملاحظات أدناه وأعد الإرسال. تبقى مسودات منتجاتك محفوظة — لا شيء يُفقد.",
+      "not_grantedTitle": "إدراج المنتجات معطّل",
+      "not_grantedBody": "حسابك معتمد لكن حقوق الإدراج موقوفة حاليًا. تواصل مع فريق DubaiPro.",
+      "suspendedTitle": "حساب التوريد الخاص بك موقوف",
+      "suspendedBody": "تواصل مع فريق DubaiPro لاستعادة حسابك.",
+      "blacklistedTitle": "حساب التوريد الخاص بك محظور",
+      "blacklistedBody": "تواصل مع فريق DubaiPro لمزيد من المعلومات.",
+      "rejectionReason": "السبب",
+      "fixAndResubmit": "التصحيح وإعادة الإرسال",
+      "completeApplication": "إكمال طلبي"
     }
   },
   "adminSuppliers": {
@@ -3158,7 +3175,15 @@
     "certStatusAPPROVED": "معتمدة",
     "certStatusREJECTED": "مرفوضة",
     "certStatusEXPIRED": "منتهية",
-    "confirmReject": "تأكيد الرفض"
+    "confirmReject": "تأكيد الرفض",
+    "applicationDecision": "قرار الطلب",
+    "approveHint": "الاعتماد يفعّل الحساب ويمنح حق إدراج المنتجات فورًا. يتم إخطار المورد.",
+    "approveApplication": "اعتماد الطلب",
+    "rejectApplication": "رفض الطلب",
+    "approvedNotice": "تم الاعتماد — يمكن للمورد الآن نشر المنتجات.",
+    "rejectedNotice": "تم الرفض — أُبلغ المورد بالسبب.",
+    "listingGranted": "يمكنه إدراج المنتجات",
+    "listingNotGranted": "لا يمكنه إدراج المنتجات"
   },
   "messaging": {
     "inboxTitle": "الرسائل",
@@ -3249,7 +3274,9 @@
       "broadcast_announcement": "{message}",
       "subscription_assigned": "تغيّرت خطتك إلى {planCode} (صالحة حتى {periodEnd}).",
       "subscription_expiring": "تنتهي خطة {planCode} في {periodEnd}. جدّدها للحفاظ على حدودك.",
-      "subscription_expired": "انتهت خطة {planCode} — انتقل حسابك إلى الخطة المجانية."
+      "subscription_expired": "انتهت خطة {planCode} — انتقل حسابك إلى الخطة المجانية.",
+      "supplier_approved": "تم اعتماد طلب التوريد — يمكنك الآن نشر المنتجات.",
+      "supplier_rejected": "تم رفض طلب التوريد: {reason}"
     },
     "emails": {
       "product_approved_subject": "تمت الموافقة على منتجك \"{productTitle}\"",
@@ -3265,7 +3292,11 @@
       "subscription_expiring_subject": "تنتهي خطة {planCode} في {periodEnd}",
       "subscription_expiring_body": "ينتهي اشتراك {planCode} في {periodEnd}. جدّده للحفاظ على حدودك الحالية — وإلا ينتقل حسابك إلى الخطة المجانية.",
       "subscription_expired_subject": "انتهت خطة {planCode}",
-      "subscription_expired_body": "انتهى اشتراك {planCode} وانتقل حسابك إلى الخطة المجانية. تبقى المنتجات الحالية ظاهرة؛ وتخضع الإضافات الجديدة لحدود الخطة المجانية."
+      "subscription_expired_body": "انتهى اشتراك {planCode} وانتقل حسابك إلى الخطة المجانية. تبقى المنتجات الحالية ظاهرة؛ وتخضع الإضافات الجديدة لحدود الخطة المجانية.",
+      "supplier_approved_subject": "تم اعتماد طلب التوريد في DubaiPro",
+      "supplier_approved_body": "خبر سار — تم اعتماد {supplierName}. يمكنك الآن نشر المنتجات واستقبال الاستفسارات وطلبات العينات والدردشة مباشرة مع المشترين. سجّل الدخول إلى لوحة المورد وأرسل أول منتج للمراجعة.",
+      "supplier_rejected_subject": "طلب التوريد في DubaiPro يحتاج إلى تعديلات",
+      "supplier_rejected_body": "لم يتم اعتماد طلب {supplierName}.\nالسبب: {reason}\nعالج الملاحظات وأعد الإرسال من لوحة المورد — تبقى مسودات منتجاتك محفوظة."
     }
   }
 }

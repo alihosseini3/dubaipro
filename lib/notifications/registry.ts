@@ -22,6 +22,10 @@ export type TemplateDefinition = {
 };
 
 export const NOTIFICATION_TEMPLATES = {
+  /** Supplier application approved — listing rights are now granted. */
+  'supplier.approved': { channels: ['inApp', 'email'], email: true },
+  /** Application rejected — carries the reason so they know what to fix. */
+  'supplier.rejected': { channels: ['inApp', 'email'], email: true },
   'product.approved': { channels: ['inApp', 'email'], email: true },
   'product.rejected': { channels: ['inApp', 'email'], email: true },
   /** Debounced: only fired when the recipient had no unread messages in the thread. */

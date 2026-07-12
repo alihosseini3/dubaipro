@@ -27,7 +27,12 @@ export const POST = createRoute(
       return NextResponse.json({ data: product });
     } catch (error) {
       if (error instanceof ProductError) {
-        return NextResponse.json({ error: error.message }, { status: error.status });
+        // `code` carries the GateReason so the client can render the right
+        // "your application is still pending / was rejected" banner.
+        return NextResponse.json(
+          { error: error.message, ...(error.code ? { code: error.code } : {}) },
+          { status: error.status }
+        );
       }
       throw error;
     }

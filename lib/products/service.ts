@@ -10,6 +10,11 @@ import {
   orgMemberIdsWithPermission
 } from '@/lib/notifications/service';
 import { assertCanCreateProduct } from '@/lib/subscriptions/limits';
+import {
+  canDraftProducts,
+  canSubmitProducts,
+  type GateReason
+} from '@/lib/suppliers/gating';
 
 import { checkTransition, type ActorKind, type ProductAction } from './workflow';
 import { validateTierSet, type TierInput } from './tiers';
@@ -31,12 +36,48 @@ import type {
 
 export class ProductError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** Stable machine code so the UI can render the right banner (see GateReason). */
+  readonly code?: string;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = 'ProductError';
     this.status = status;
+    this.code = code;
   }
 }
+
+/**
+ * Load the gate-relevant supplier columns and evaluate the listing gate.
+ * Server-side enforcement — the UI mirrors this but is never trusted.
+ */
+async function assertGate(
+  supplierId: string,
+  level: 'draft' | 'submit'
+): Promise<void> {
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    select: { onboardingStatus: true, status: true, canListProducts: true }
+  });
+  if (!supplier) throw new ProductError('Supplier not found', 404);
+
+  const gate =
+    level === 'draft' ? canDraftProducts(supplier) : canSubmitProducts(supplier);
+  if (!gate.allowed) {
+    throw new ProductError(GATE_MESSAGES[gate.reason], 403, gate.reason);
+  }
+}
+
+const GATE_MESSAGES: Record<GateReason, string> = {
+  not_submitted:
+    'Complete and submit your supplier application before publishing products.',
+  pending_review:
+    'Your supplier application is under review. You can keep preparing drafts; publishing unlocks once an admin approves it.',
+  rejected:
+    'Your supplier application was rejected. Fix the issues and resubmit before publishing products.',
+  not_granted: 'Product listing is currently disabled for your account.',
+  suspended: 'Your supplier account is suspended.',
+  blacklisted: 'Your supplier account is blocked.'
+};
 
 const MAX_SLUG_PROBES = 50;
 
@@ -118,6 +159,9 @@ export async function createSupplierProduct(
   supplierId: string,
   input: SupplierProductInput
 ) {
+  // Suspended/blacklisted orgs can't touch the catalog at all. A pending
+  // applicant CAN prepare drafts — the gate bites at submit time.
+  await assertGate(supplierId, 'draft');
   // Plan cap — grandfathered: only new creations are blocked, never existing.
   await assertCanCreateProduct(supplierId);
 
@@ -326,6 +370,12 @@ export async function applySupplierStatusAction(
   productId: string,
   action: Extract<ProductAction, 'submit' | 'archive' | 'unarchive'>
 ) {
+  // Submitting for review = trying to go live → requires admin approval of the
+  // supplier application. Archive/unarchive stay open (housekeeping).
+  if (action === 'submit') {
+    await assertGate(supplierId, 'submit');
+  }
+
   const product = await requireOwnedProduct(supplierId, productId);
   const check = checkTransition(action, product.status, 'supplier');
   if (!check.ok) {
